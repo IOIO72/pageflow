@@ -1,48 +1,51 @@
 pageflow.ready = new $.Deferred(function(readyDeferred) {
+  var pagePreloaded = new $.Deferred(function(pagePreloadedDeferred) {
+    $(document).one('pagepreloaded', pagePreloadedDeferred.resolve);
+  }).promise();
+
   window.onload = function() {
-    pageflow.features.detect().then(function() {
-      $('body').one('pagepreloaded', function() {
+    pageflow.browser.detectFeatures().then(function() {
+      var slideshow = $('[data-role=slideshow]');
+      var body = $('body');
+
+      pageflow.Visited.setup();
+
+      pagePreloaded.then(function() {
         readyDeferred.resolve();
+        pageflow.events.trigger('ready');
       });
 
-      $('[data-role=slideshow]').each(function() {
-        var configurationsById = _.reduce(pageflow.pages, function(memo, page) {
-          memo[page.id] = page.configuration;
-          return memo;
-        }, {});
+      slideshow.each(function() {
+        pageflow.events.trigger('seed:loaded');
 
-        pageflow.slides = new pageflow.Slideshow($(this), configurationsById);
-        pageflow.history = new pageflow.History(pageflow.slides);
+        pageflow.entryData = new pageflow.SeedEntryData(
+          pageflow.seed
+        );
+
+        pageflow.Audio.setup({
+          audioFiles: pageflow.audioFiles
+        });
+
+        pageflow.Slideshow.setup({
+          element: $(this),
+          pages: pageflow.pages,
+          enabledFeatureNames: pageflow.enabledFeatureNames,
+
+          beforeFirstUpdate: function() {
+            $('.header').header({slideshow: pageflow.slides});
+            $('.overview').overview();
+            $('.multimedia_alert').multimediaAlert();
+
+            pageflow.widgetTypes.enhance(body);
+            pageflow.delayedStart.perform();
+            pageflow.phoneLandscapeFullscreen();
+          }
+        });
       });
 
-      $('.header').header({
-        slideshow: pageflow.slides
-      });
-      $('.navigation').navigation();
-      $('.navigation_mobile').navigationMobile();
-      $('.overview').overview();
-      $('.multimedia_alert').multimediaAlert();
-
-      $("body").on('click mousedown', 'a, [tabindex]', function() {
-        $(this).blur();
-      });
-
-      $("body").on('keypress', 'a, [tabindex]', function(e) {
-        if (e.which == 13) {
-          $(this).click();
-        }
-      });
-
-      $("body").on("keyup", "a, [tabindex]", function (e) {
-        e.stopPropagation();
-      });
-
-      $(".content_link").attr("href","#firstContent");
-      $(".content_link").click(function(e) {
-        $("#firstContent").focus();
-        e.preventDefault();
-        return false; }
-      );
+      pageflow.links.setup();
+      pageflow.FocusOutline.setup(body);
+      pageflow.nativeScrolling.preventScrollingOnEmbed(slideshow);
     });
   };
 }).promise();

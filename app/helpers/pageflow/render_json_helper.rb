@@ -21,6 +21,24 @@ module Pageflow
       end
     end
 
+    ESCAPED_CHARS = {
+      "\u2028" => '\u2028',
+      "\u2029" => '\u2029',
+      '</' => '<\/'
+    }
+
+    ESCAPED_CHARS_REGEX = %r{</|[\u2028\u2029]}u
+
+    def sanitize_json(json)
+      json.gsub(ESCAPED_CHARS_REGEX, ESCAPED_CHARS)
+    end
+
+    def render_html_partial(*args)
+      render_with_format(:html) do
+        render(*args)
+      end
+    end
+
     def render_with_format(format, &block)
       old_formats = formats
       self.formats = [format] # hack so partials resolve with json not html format

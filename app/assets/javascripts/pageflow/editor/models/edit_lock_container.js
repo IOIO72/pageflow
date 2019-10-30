@@ -3,7 +3,7 @@ pageflow.EditLockContainer = Backbone.Model.extend({
     this.storageKey = 'pageflow.edit_lock.' + pageflow.entry.id;
   },
 
-  aquire: function(options) {
+  acquire: function(options) {
     options = options || {};
     var container = this;
 
@@ -18,7 +18,7 @@ pageflow.EditLockContainer = Backbone.Model.extend({
         sessionStorage[container.storageKey] = lock.id;
 
         container.lock = lock;
-        container.trigger('aquired');
+        container.trigger('acquired');
 
         container.startPolling();
       }
@@ -28,8 +28,8 @@ pageflow.EditLockContainer = Backbone.Model.extend({
   startPolling: function() {
     if (!this.pollingInteval) {
       this.pollingInteval = setInterval(_.bind(function() {
-        this.aquire({polling: true});
-      }, this), 2000);
+        this.acquire({polling: true});
+      }, this), pageflow.config.editLockPollingIntervalInSeconds * 1000);
     }
   },
 
@@ -50,15 +50,16 @@ pageflow.EditLockContainer = Backbone.Model.extend({
     });
 
     $(document).ajaxError(function(event, xhr, settings) {
-      if (xhr.status === 409) {
-        container.lock = null;
-        container.trigger('locked',
-                          xhr.responseJSON || {},
-                          {
-                            context: (settings.url.match(/\/edit_lock/) && !settings.polling) ? 'aquire' : 'other'
-                          });
-
-        container.stopPolling();
+      switch(xhr.status) {
+      case 409:
+        container.handleConflict(xhr, settings);
+        break;
+      case 401:
+      case 422:
+        container.handleUnauthenticated();
+        break;
+      default:
+        container.handleError();
       }
     });
   },
@@ -66,8 +67,29 @@ pageflow.EditLockContainer = Backbone.Model.extend({
   release: function() {
     if (this.lock) {
       var promise = this.lock.destroy();
+      delete sessionStorage[this.storageKey];
       this.lock = null;
       return promise;
     }
+  },
+
+  handleConflict: function(xhr, settings) {
+    this.lock = null;
+    this.trigger('locked',
+                 xhr.responseJSON || {},
+                 {
+                   context: (settings.url.match(/\/edit_lock/) && !settings.polling) ? 'acquire' : 'other'
+                 });
+
+    this.stopPolling();
+
+  },
+
+  handleUnauthenticated: function() {
+    this.stopPolling();
+    this.trigger('unauthenticated');
+  },
+
+  handleError: function() {
   }
 });

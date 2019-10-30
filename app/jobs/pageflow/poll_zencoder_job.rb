@@ -1,14 +1,17 @@
 module Pageflow
-  class PollZencoderJob
-    @queue = :resizing
+  class PollZencoderJob < ApplicationJob
+    queue_as :resizing
 
-    extend StateMachineJob
+    include StateMachineJob
 
-    def self.perform_with_result(file, options, api = ZencoderApi.instance)
-      result = catch(:halt) do
+    def perform_with_result(file, options, api = ZencoderApi.instance)
+      options ||= {}
+
+      catch(:halt) do
         poll_zencoder(file, api)
         fetch_input_details(file, api)
-        fetch_thumbnail(file)
+        fetch_thumbnail(file) unless options[:skip_thumbnail]
+
         :ok
       end
     ensure
@@ -17,7 +20,7 @@ module Pageflow
 
     private
 
-    def self.poll_zencoder(file, api)
+    def poll_zencoder(file, api)
       info = api.get_info(file.job_id)
 
       file.encoding_progress = info[:finished] ? 100 : info[:progress];
@@ -36,16 +39,16 @@ module Pageflow
       raise
     end
 
-    def self.fetch_thumbnail(file)
+    def fetch_thumbnail(file)
       return unless file.respond_to?(:thumbnail)
-      file.thumbnail = URI.parse(file.zencoder_thumbnail.url)
-      file.poster = URI.parse(file.zencoder_poster.url)
+      file.thumbnail = URI.parse(file.zencoder_thumbnail.url(default_protocol: 'https'))
+      file.poster = URI.parse(file.zencoder_poster.url(default_protocol: 'https'))
     rescue OpenURI::HTTPError
       throw(:halt, :pending)
     end
 
-    def self.fetch_input_details(file, api)
-      file.meta_data_attributes = api.get_input_details(file.job_id)
+    def fetch_input_details(file, api)
+      file.meta_data_attributes = api.get_details(file.job_id)
     rescue ZencoderApi::RecoverableError => e
       file.encoding_error_message = e.message
       throw(:halt, :pending)

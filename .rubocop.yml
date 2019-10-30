@@ -1,0 +1,73 @@
+AllCops:
+  TargetRubyVersion: 2.3
+
+# Use double quotes only for interpolation.
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+# Place dots at the beginning of multiline method calls.
+Layout/DotPosition:
+  EnforcedStyle: leading
+
+# Allow using {} when chaining methods
+Style/BlockDelimiters:
+  EnforcedStyle: braces_for_chaining
+
+# The default of 80 characters is a little to narrow.
+Metrics/LineLength:
+  Max: 100
+
+# Only place spaces inside blocks written with braces.
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+
+# Do not warn about missing magic comment
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# Allow `json.(:attribute)`
+Style/LambdaCall:
+  Enabled: false
+
+  # Do not use %i for symbol arrays
+Style/SymbolArray:
+  EnforcedStyle: brackets
+
+# In specs methods using RSpec DSL often become complex
+Metrics/AbcSize:
+  Exclude:
+    - spec/**/*
+
+# Ignore long RSpec describe blocks
+Metrics/BlockLength:
+  ExcludedMethods: ['describe', 'context', 'feature', 'it']
+  Exclude:
+    - spec/factories/*.rb
+
+# In specs methods using RSpec DSL often become long
+Metrics/MethodLength:
+  Exclude:
+    - spec/**/*
+
+# Long spec files are ok
+Metrics/ModuleLength:
+  Exclude:
+    - spec/**/*
+
+# Do not require class documentation for specs and migrations
+Style/Documentation:
+  Exclude:
+    - spec/**/*
+    - db/migrate/*
+
+# Both ['...'] and %w(...) are fine
+Style/WordArray:
+  Enabled: false
+
+# Both [] and %i(...) are fine
+Style/SymbolArray:
+  Enabled: false
+
+# extend self is fine
+Style/ModuleFunction:
+  Enabled: false

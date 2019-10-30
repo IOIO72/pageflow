@@ -5,8 +5,13 @@ pageflow.transientReferences = {
   },
 
   getReference: function(attribute, collection) {
+    if (typeof collection === 'string') {
+      var fileType = pageflow.editor.fileTypes.findByCollectionName(collection);
+      collection = pageflow.entry.getFileCollection(fileType);
+    }
+
     return this.transientReferences[attribute] ||
-      collection.get(this.get(attribute));
+      collection.getByPermaId(this.get(attribute));
   },
 
   setReference: function(attribute, record) {
@@ -17,25 +22,34 @@ pageflow.transientReferences = {
 
   unsetReference: function(attribute) {
     this._cleanUpReference(attribute);
-    this.unset(attribute);
+    this.set(attribute, null);
   },
 
   _setReference: function(attribute, record) {
     if (record.isNew()) {
       this.transientReferences[attribute] = record;
       this.set(attribute, null);
-      this._setIdOnceSynced(attribute, record);
+      this._setPermaIdOnceSynced(attribute, record);
     }
     else {
-      this.set(attribute, record.id);
+      this.set(attribute, record.get('perma_id'));
     }
   },
 
-  _setIdOnceSynced: function(attribute, record) {
-    record.once('change:id', function() {
-      delete this.transientReferences[attribute];
-      this.set(attribute, record.id);
+  _setPermaIdOnceSynced: function(attribute, record) {
+    record.once('change:perma_id', function() {
+      this._onceRecordCanBeFoundInCollection(record, function() {
+        delete this.transientReferences[attribute];
+        this.set(attribute, record.get('perma_id'));
+      });
     }, this);
+  },
+
+  _onceRecordCanBeFoundInCollection: function(record, callback) {
+    // Backbone collections update their modelsById map in the change
+    // event which is dispatched after the `change:<attribute>`
+    // events.
+    record.once('change', _.bind(callback, this));
   },
 
   _listenForReady: function(attribute, record) {
@@ -46,6 +60,7 @@ pageflow.transientReferences = {
         if (record.isReady()) {
           this._cleanUpReadyListener(attribute);
           this.trigger('change');
+          this.trigger('change:' + attribute + ':ready');
         }
       });
     }
@@ -58,7 +73,7 @@ pageflow.transientReferences = {
 
   _cleanUpSaveListener: function(attribute) {
     if (this.transientReferences[attribute]) {
-      this.stopListening(this.transientReferences[attribute], 'change:id');
+      this.stopListening(this.transientReferences[attribute], 'change:perma_id');
       delete this.transientReferences[attribute];
     }
   },

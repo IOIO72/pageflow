@@ -3,27 +3,30 @@ pageflow.app.addInitializer(function(options) {
     el: $('body')
   }).render();
 
-  pageflow.app.mainRegion.show(new pageflow.EntryPreviewView({
+  new pageflow.ScrollingView({
+    el: $('sidebar .scrolling'),
+    region: pageflow.app.sidebarRegion
+  }).render();
+
+  pageflow.app.previewRegion.show(new pageflow.EntryPreviewView({
     model: pageflow.entry
   }));
 
-  pageflow.app.notificationsRegion.show(new pageflow.NotificationsView().render());
-  pageflow.app.helpButtonRegion.show(new pageflow.HelpButtonView().render());
-
-  window.editor = new pageflow.SidebarRouter({
-    controller: new pageflow.SidebarController({
-      region: pageflow.app.sidebarRegion,
-      entry: pageflow.entry
-    })
-  });
+  pageflow.app.indicatorsRegion.show(new pageflow.DisabledAtmoIndicatorView());
+  pageflow.app.notificationsRegion.show(new pageflow.NotificationsView());
+  pageflow.app.sidebarFooterRegion.show(new pageflow.SidebarFooterView({
+    model: pageflow.entry
+  }));
 
   Backbone.history.start({root: options.root});
 });
 
 pageflow.app.addRegions({
-  mainRegion: 'main',
+  previewRegion: '#entry_preview',
+  mainRegion: '#main_content',
+  indicatorsRegion: '#editor_indicators',
   sidebarRegion: 'sidebar .container',
   dialogRegion: '.dialog_container',
   notificationsRegion: 'sidebar .notifications_container',
-  helpButtonRegion: 'sidebar .help_button_container'
+  sidebarFooterRegion: 'sidebar .sidebar_footer_container'
 });

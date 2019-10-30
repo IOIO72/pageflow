@@ -1,0 +1,71 @@
+<%= admin_form_for [:admin, resource] do |f| %>
+  <% account_config = Pageflow.config_for(f.object) %>
+
+  <%= f.inputs do %>
+    <%= f.input :name %>
+    <%= f.input :default_file_rights %>
+
+    <% account_config.admin_form_inputs.find_all_for(:account).each do |form_input| %>
+      <%= form_input.build(f) %>
+    <% end %>
+  <% end %>
+
+  <%= f.semantic_fields_for :default_theming do |theming| %>
+    <%= f.inputs do %>
+      <%= theming.input :cname, hint: t('pageflow.admin.themings.cname_hint') %>
+      <%= theming.input :additional_cnames, hint: t('pageflow.admin.themings.additional_cnames_hint') %>
+      <%= theming.input :home_url, hint: t('pageflow.admin.themings.home_url_hint') %>
+    <% end %>
+
+    <%= f.inputs do %>
+      <%= theming.input :default_locale,
+                        as: :select,
+                        include_blank: false,
+                        collection: Pageflow.config.available_public_locales.map{ |locale|
+                          [t('pageflow.public._language', locale: locale), locale.to_s]
+                        },
+                        hint: t('pageflow.admin.themings.default_locale_hint') %>
+      <%= theming.input :default_author,
+        hint: t('pageflow.admin.themings.default_author_hint'),
+        placeholder: Pageflow.config.default_author_meta_tag %>
+      <%= theming.input :default_publisher,
+        hint: t('pageflow.admin.themings.default_publisher_hint'),
+        placeholder: Pageflow.config.default_publisher_meta_tag %>
+      <%= theming.input :default_keywords,
+        hint: t('pageflow.admin.themings.default_keywords_hint'),
+        placeholder: Pageflow.config.default_keywords_meta_tag %>
+      <%= theming.input :share_providers,
+                        as: :check_boxes,
+                        collection: Pageflow.config.available_share_providers,
+                        member_label: Proc.new { |s| s.to_s.camelize } %>
+
+    <% end %>
+
+    <%= f.inputs do %>
+      <%= theming.input :imprint_link_label %>
+      <%= theming.input :imprint_link_url %>
+      <%= theming.input :copyright_link_label %>
+      <%= theming.input :copyright_link_url %>
+      <%= theming.input :privacy_link_url %>
+
+      <% account_config.admin_form_inputs.find_all_for(:theming).each do |form_input| %>
+        <%= form_input.build(theming) %>
+      <% end %>
+    <% end %>
+
+    <%= f.inputs do %>
+      <%= render('admin/accounts/theming_defaults_inline_help') %>
+      <%= theming.input :theme_name, include_blank: false, collection: account_config.themes.names %>
+      <%= theming.input :home_button_enabled_by_default %>
+      <%= admin_widgets_fields(theming, account_config) %>
+    <% end %>
+  <% end %>
+  <%= f.actions do %>
+    <%= f.action(:submit) %>
+    <%= f.action(:cancel, :wrapper_html => {:class => 'cancel'}) %>
+  <% end %>
+
+  <script id="theme_options" type="application/json">
+    <%= themes_options_json_seed(account_config) %>
+  </script>
+<% end %>

@@ -4,42 +4,52 @@ pageflow.SidebarController = Backbone.Marionette.Controller.extend({
     this.entry = options.entry;
   },
 
-  index: function() {
+  index: function(storylineId) {
     this.region.show(new pageflow.EditEntryView({
-      model: this.entry
+      model: this.entry,
+      storylineId: storylineId
     }));
   },
 
-  imageFiles: function(pageId, attributeName) {
-    this.files(pageId, attributeName, 'image_files');
-  },
-
-  videoFiles: function(pageId, attributeName) {
-    this.files(pageId, attributeName, 'video_files');
-  },
-
-  audioFiles: function(pageId, attributeName) {
-    this.files(pageId, attributeName, 'audio_files');
-  },
-
-  files: function(pageId, attributeName, tabName) {
+  files: function(collectionName, handler, payload, filterName) {
     this.region.show(new pageflow.FilesView({
       model: this.entry,
-      page: this.entry.pages.get(pageId),
-      pageAttributeName: attributeName,
-      tabName: tabName
+      selectionHandler: handler && pageflow.editor.createFileSelectionHandler(handler, payload),
+      tabName: collectionName,
+      filterName: filterName
+    }));
+
+    pageflow.editor.setDefaultHelpEntry('pageflow.help_entries.files');
+  },
+
+  confirmableFiles: function(preselectedFileType, preselectedFileId) {
+    this.region.show(pageflow.ConfirmEncodingView.create({
+      model: pageflow.EncodingConfirmation.createWithPreselection({
+        fileType: preselectedFileType,
+        fileId: preselectedFileId
+      })
     }));
   },
 
-  metaData: function() {
+  metaData: function(tab) {
     this.region.show(new pageflow.EditMetaDataView({
-      model: this.entry
+      model: this.entry,
+      tab: tab
     }));
   },
 
   publish: function() {
-    this.region.show(new pageflow.PublishEntryView({
-      model: this.entry
+    this.region.show(pageflow.PublishEntryView.create({
+      model: this.entry,
+      entryPublication: new pageflow.EntryPublication()
+    }));
+
+    pageflow.editor.setDefaultHelpEntry('pageflow.help_entries.publish');
+  },
+
+  storyline: function(id) {
+    this.region.show(new pageflow.EditStorylineView({
+      model: this.entry.storylines.get(id)
     }));
   },
 
@@ -50,9 +60,31 @@ pageflow.SidebarController = Backbone.Marionette.Controller.extend({
   },
 
   page: function(id, tab) {
+    var page = this.entry.pages.get(id);
+
     this.region.show(new pageflow.EditPageView({
-      model: this.entry.pages.get(id),
+      model: page,
+      api: pageflow.editor,
       tab: tab
     }));
-  }
+
+    pageflow.editor.setDefaultHelpEntry(page.pageType().help_entry_translation_key);
+  },
+
+  pageLink: function(linkId) {
+    var pageId = linkId.split(':')[0];
+    var page = pageflow.pages.getByPermaId(pageId);
+
+    this.region.show(new pageflow.EditPageLinkView({
+      model: page.pageLinks().get(linkId),
+      page: page,
+      api: pageflow.editor
+    }));
+  },
+
+  widget: function(id) {
+    this.region.show(new pageflow.EditWidgetView({
+      model: this.entry.widgets.get(id)
+    }));
+  },
 });

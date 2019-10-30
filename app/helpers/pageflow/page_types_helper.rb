@@ -2,18 +2,30 @@ module Pageflow
   module PageTypesHelper
     include RenderJsonHelper
 
-    def page_type_json_seeds
-      render_json_partial('pageflow/page_types/page_type', :collection => Pageflow.config.page_types, :as => :page_type)
+    def page_type_json_seeds(config)
+      render_json_partial('pageflow/page_types/page_type',
+                          collection: config.page_types,
+                          as: :page_type)
     end
 
-    def page_type_templates
-      Pageflow.config.page_types.map do |page_type|
-        content_tag(:script, :type => 'text/html', :data => {:template => "#{page_type.name}_page"}) do
-          render_to_string(:template => page_type.template_path,
-                           :locals => {:configuration => {}, :page => Page.new},
-                           :layout => false)
-        end
-      end.join(' ').html_safe
+    def page_type_json_seed(json, page_type)
+      if page_type.json_seed_template
+        json.partial!(template: page_type.json_seed_template, locals: {page_type: page_type})
+      end
+    end
+
+    def page_type_templates(entry)
+      safe_join(Pageflow.config.page_types.map do |page_type|
+        content_tag(:script,
+                    render_to_string(template: page_type.template_path,
+                                     locals: {
+                                       configuration: {},
+                                       page: Page.new,
+                                       entry: entry
+                                     },
+                                     layout: false).to_str,
+                    type: 'text/html', data: {template: "#{page_type.name}_page"})
+      end)
     end
   end
 end

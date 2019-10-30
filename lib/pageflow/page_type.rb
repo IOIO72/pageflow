@@ -8,7 +8,29 @@ module Pageflow
 
     # Name to display in editor.
     def translation_key
-      "pageflow.#{name}.page_type_name"
+      "#{translation_key_prefix}.page_type_name"
+    end
+
+    # Translation key for a one line description of the page type.
+    def description_translation_key
+      "#{translation_key_prefix}.page_type_description"
+    end
+
+    # Translation key for the category the page type shall be
+    # displayed in inside the page type select menu.
+    def category_translation_key
+      "#{translation_key_prefix}.page_type_category_name"
+    end
+
+    # Translation key for a markdown text fragment describing the page
+    # type.
+    def help_entry_translation_key
+      "#{translation_key_prefix}.help_entries.page_type"
+    end
+
+    # Common prefix of all page type translation keys.
+    def translation_key_prefix
+      "pageflow.#{name}"
     end
 
     # Override to return a string in snake_case.
@@ -39,6 +61,131 @@ module Pageflow
     #
     def view_helpers
       []
+    end
+
+
+    # ActiveRecord models to be copied together with a revision.
+    #
+    # This allows authors of PageTypes to attach models to the Pageflow
+    # revision mechanism.
+    #
+    # Example:
+    #     class Rainbow < ActiveRecord::Base
+    #       include Pageflow::RevisionComponent
+    #
+    #       [...]
+    #     end
+    #
+    #     class RainbowPageType < Pageflow::PageType
+    #       name 'rainbow'
+    #
+    #       def revision_components
+    #         [Rainbow]
+    #       end
+    #     end
+    #
+    def revision_components
+      []
+    end
+
+    # File types to enable when this page type is registered..
+    # @returns {Array<FileType>}
+    def file_types
+      []
+    end
+
+    # Current plugin version
+    def export_version
+      "Pageflow::#{name.camelize}::VERSION".constantize
+    rescue NameError
+      begin
+        "#{name.camelize}::VERSION".constantize
+      rescue NameError
+        raise "PageType #{name} needs to define export_version."
+      end
+    end
+
+    # Gets included in JSON file during export of an entry.
+    # The host application needs to compare this version with the version (above)
+    # for each page type before importing.
+    # Defaults to the plugins version but can be overwritten during registry of the page type,
+    # using the same notation as version requirements in the Gemfile.
+    def import_version_requirement
+      export_version
+    end
+
+    # A list of hashes used to determine a thumbnail for a page. Each
+    # hash in the list must contain two keys: `attribute` and
+    # `file_collection`.
+    #
+    # For each item, the given attribute is fetched from the page
+    # configuration and used to find a file from the given
+    # collection. `file_collection` must equal the collection_name of
+    # a registered {FileType}. The first file found is used as
+    # thumbnail.
+    #
+    #     [
+    #       {attribute: 'thumbnail_image_id', file_collection: 'image_files'},
+    #       {attribute: 'background_image_id', file_collection: 'image_files'}
+    #     ]
+    #
+    # It is possible to specify further conditions under which the
+    # candidate may be used via `if` or `unless` keys:
+    #
+    #     [
+    #       {
+    #         attribute: 'video_id',
+    #         file_collection: 'video_files',
+    #         if: {
+    #           attribute: 'background_type',
+    #           value: 'video',
+    #         }
+    #       },
+    #       {
+    #         attribute: 'image_id',
+    #         file_collection: 'image_files',
+    #         unless: {
+    #           attribute: 'background_type',
+    #           value: 'video',
+    #         }
+    #       }
+    #     ]
+    #
+    # The candidate will only be used if the given attribute has the
+    # given value.
+    #
+    # @returns {Array<Hash>}
+    def thumbnail_candidates
+      [
+        {
+          file_collection: 'image_files',
+          attribute: 'thumbnail_image_id'
+        },
+        {
+          file_collection: 'image_files',
+          attribute: 'background_image_id',
+          unless: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        },
+        {
+          file_collection: 'image_files',
+          attribute: 'poster_image_id',
+          if: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        },
+        {
+          file_collection: 'video_files',
+          attribute: 'video_file_id',
+          if: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        }
+      ]
     end
 
     # View path of a template containing additional json to pass to
@@ -78,38 +225,6 @@ module Pageflow
       return super() unless name
       define_method :name do
         name
-      end
-    end
-
-    # Include in your engine if it mainly defines new page types. Sets
-    # up load paths so you can place all files related to a page type
-    # in a single directory. The following structure is proposed for a
-    # page type engine:
-    #
-    #    pageflow-rainbow/
-    #      page_types/
-    #        pageflow/
-    #          rainbow/
-    #            editor.js
-    #            page.html.erb
-    #            page_type.json.jbuilder
-    #          rainbow.css.scss
-    #          rainbow.js
-    #      lib/
-    #        pageflow/
-    #          rainbow/
-    #            engine.rb
-    #            page_type.rb
-    #
-    module Engine
-      extend ActiveSupport::Concern
-
-      included do
-        paths["app/views"] << 'page_types'
-
-        initializer :assets do |config|
-          Rails.application.config.assets.paths << root.join('page_types')
-        end
       end
     end
   end

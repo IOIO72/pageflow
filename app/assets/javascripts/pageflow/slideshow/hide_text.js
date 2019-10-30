@@ -10,7 +10,7 @@ pageflow.hideText = (function() {
   }
 
   $(function() {
-    element().on('keydown', function(e) {
+    element().on('keydown', function(event) {
       if(event.keyCode == 27) {
         pageflow.hideText.deactivate();
       }
@@ -32,17 +32,25 @@ pageflow.hideText = (function() {
     },
 
     activate: function() {
-      element().addClass('hideText');
-      element().trigger('hidetextactivate');
+      if (!this.isActive()) {
+        element().addClass('hideText');
+        element().trigger('hidetextactivate');
+      }
     },
 
     deactivate: function() {
-      element().removeClass('hideText');
-      element().trigger('hidetextdeactivate');
+      if (this.isActive()) {
+        element().removeClass('hideText');
+        element().trigger('hidetextdeactivate');
+      }
     },
 
     on: function(event, callback) {
       element().on(prefix(event), callback);
+    },
+
+    off: function(event, callback) {
+      element().off(prefix(event), callback);
     }
   };
 }());

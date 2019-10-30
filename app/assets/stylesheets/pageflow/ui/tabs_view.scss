@@ -1,0 +1,38 @@
+.tabs_view {
+  &-scroller {
+    background-color: #e5e5e5;
+    position: relative;
+    overflow: hidden;
+    height: 35px;
+  }
+
+  &-headers {
+    white-space: nowrap;
+    padding: 0;
+    position: absolute;
+
+    li {
+      display: inline-block;
+      padding: 10px 10px;
+      background-color: #e5e5e5;
+      cursor: pointer;
+
+      &.active {
+        background-color: #fff;
+      }
+
+      &.spinner {
+        padding-left: 27px;
+        @include background-icon-left;
+        @include background-icon-animation(blink);
+        @include up-bold-icon;
+      }
+    }
+  }
+
+  &-container {
+    background-color: #fff;
+    padding: 10px;
+  }
+
+}

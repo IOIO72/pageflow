@@ -1,89 +1,31 @@
-/*global IScroll*/
-
 (function($) {
   $.widget('pageflow.navigation', {
     _create: function() {
-      var overlays = this.element.find('.navigation_site_detail'),
-          that = this,
+      var element = this.element,
+          overlays = element.find('.navigation_site_detail'),
           toggleIndicators = function() {};
 
-      this.element.addClass('js').append(overlays);
+      element.addClass('js').append(overlays);
 
-      $('a.navigation_home', this.element).homeButton();
+      $('a.navigation_top', element).topButton();
 
-      $('.navigation_bar_bottom', this.element)
-        .append($('.navigation_bar_top > li', this.element).slice(3));
+      $('.navigation_bar_bottom', element)
+        .append($('.navigation_bar_top > li', element).slice(-2));
 
-      /* Volume */
-
-      var handlingVolume = false;
-      var volumeBeforeMute = 1;
-      var muteButton = $('.navigation_bg.navigation_mute', that.element);
-
-      var changeVolume = function(event) {
-        var volume = (event.pageX - $('.volume-slider', that.element).offset().left) / $(('.volume-slider')).width();
-        if (volume > 1) { volume = 1; }
-        if (volume < 0) { volume = 0; }
-        setVolume(volume);
-      };
-
-      var setVolume = function(volume) {
-        $('.volume-level', that.element).css({width: volume * 100 + "%"});
-        pageflow.settings.set('volume', volume);
-
-        if (volume === 0) {
-          muteButton
-            .attr('title', muteButton.attr('data-muted-title'))
-            .addClass('muted');
-        }
-        else {
-          muteButton
-            .attr('title', muteButton.attr('data-not-muted-title'))
-            .removeClass('muted');
-        }
-      };
-
-      var toggleMute = function () {
-        if (pageflow.settings.get('volume') > 0) {
-          volumeBeforeMute = pageflow.settings.get('volume');
-          setVolume(0);
-        }
-        else {
-          setVolume(volumeBeforeMute);
-        }
-      };
-
-      muteButton.on("click", function() {
-        toggleMute();
-      });
-
-      $('.volume-level', this.element).css({
-        width: pageflow.settings.get("volume") * 100 + "%"
-      });
-
-      $('.navigation_volume_box', this.element).on("mousedown", function(event) {
-        handlingVolume = true;
-        changeVolume(event);
-      });
-
-      $('.navigation_volume_box', this.element).on("mousemove", function(event) {
-        if(handlingVolume) {
-          changeVolume(event);
-        }
-      });
-
-      setVolume(pageflow.settings.get('volume'));
+      $('.navigation_volume_box', element).volumeSlider({orientation: 'h'});
+      $('.navigation_mute', element).muteButton();
 
       /* hide volume button on mobile devices */
-      if (pageflow.features.has('mobile platform')) {
-        $('li.mute', this.element).hide();
-        $('.navigation_bar_bottom', this.element).css('height', '224px');
-        $('.scroller', this.element).css('bottom', '224px');
-        $('.scroll_indicator.bottom', this.element).css('bottom', '190px');
+
+      if (pageflow.browser.has('mobile platform')) {
+        $('li.mute', element).hide();
+        $('.navigation_bar_bottom', element).css('height', '224px');
+        $('.scroller', element).css('bottom', '224px');
+        $('.navigation_scroll_indicator.bottom', element).css('bottom', '190px');
       }
 
       /* header button */
-      $('.navigation_main', this.element).click(function() {
+      $('.navigation_main', element).click(function() {
         $(this)
           .toggleClass('active')
           .updateTitle();
@@ -92,20 +34,29 @@
 
       /* open header through skiplinks */
       $('a[href="#header"], a[href="#search"]', '#skipLinks').click(function() {
-        $('.navigation_main', that.element).addClass('active');
+        $('.navigation_main', element).addClass('active');
         $('.header').addClass('active');
         $(this.getAttribute('href')).select();
       });
 
       /* share-button */
-      $('.navigation_menu .navigation_menu_box a', this.element).focus(function() {
-        $(this).parent().parent().addClass('focused');
+      $('.navigation_menu .navigation_menu_box a', element).focus(function() {
+        $(this).parents('.navigation_menu').addClass('focused');
       }).blur(function() {
-        $(this).parent().parent().removeClass('focused');
+        $(this).parents('.navigation_menu').removeClass('focused');
+      });
+
+      var shareBox = $('.navigation_share_box', element),
+          links = $('.share_box_icons > a', shareBox);
+      shareBox.shareMenu({
+        subMenu: $('.sub_share', element),
+        links: links,
+        insertAfter: $('.share_box_icons'),
+        closeOnMouseLeaving: shareBox
       });
 
       /* pages */
-      var pageLinks = $('.navigation_thumbnails a', that.element),
+      var pageLinks = $('.navigation_thumbnails a', element),
         target;
 
       function registerHandler() {
@@ -117,11 +68,6 @@
         pageLinks.off('mouseup touchend', goToPage);
       }
 
-      function closeOverview() {
-        $('.overview').removeClass("active");
-        $('.navigation_index', that.element).removeClass("active");
-      }
-
       function hideOverlay() {
         $(overlays).addClass('hidden').removeClass('visible');
       }
@@ -131,8 +77,6 @@
           return;
         }
         hideOverlay();
-        closeOverview();
-        $('.page .content, .scroll_indicator').removeClass('hidden');
         pageflow.slides.goToById(this.getAttribute("data-link"));
         e.preventDefault();
       }
@@ -141,6 +85,7 @@
         var handlerIn = function() {
           if (!('ontouchstart' in document.documentElement)) {
             $(overlays[index]).css("top", $(this).offset().top).addClass('visible').removeClass('hidden');
+            overlays.loadLazyImages();
           }
         };
 
@@ -159,14 +104,14 @@
 
       var initiateIndicators = function() {
         setTimeout(function() {
-          $('.scroll_indicator', that.element).show();
+          $('.navigation_scroll_indicator', element).show();
           toggleIndicators();
         }, 500);
       };
 
-      $('.scroller', this.element).each(function () {
-        var bottomIndicator = $('.scroll_indicator.bottom', that.element),
-          topIndicator = $('.scroll_indicator.top', that.element),
+      $('.scroller', element).each(function () {
+        var bottomIndicator = $('.navigation_scroll_indicator.bottom', element),
+          topIndicator = $('.navigation_scroll_indicator.top', element),
           scrollUpIntervalID, scrollDownIntervalID,
           hideOverlay = function () {
             overlays.addClass('hidden').removeClass('visible');
@@ -184,16 +129,16 @@
         toggleIndicators = function () {
           if (atBoundary('down')) {
             clearInterval(scrollDownIntervalID);
-            bottomIndicator.hide().removeClass('pressed');
+            bottomIndicator.removeClass('pressed');
           }
+
           if (atBoundary('up')) {
             clearInterval(scrollUpIntervalID);
-            topIndicator.hide().removeClass('pressed');
+            topIndicator.removeClass('pressed');
           }
-          if (!atBoundary('up') && !atBoundary('down')) {
-            topIndicator.show();
-            bottomIndicator.show();
-          }
+
+          topIndicator.toggleClass('visible', !atBoundary('up'));
+          bottomIndicator.toggleClass('visible', !atBoundary('down'));
         };
 
         var keyPressHandler = function(e) {
@@ -236,9 +181,20 @@
 
         var scroller = new IScroll(this, scrollerOptions);
 
-        $('ul.navigation_thumbnails', that.element).pageNavigationList({
+        $('ul.navigation_thumbnails', element).pageNavigationList({
           scroller: scroller,
-          scrollToActive: true
+          scrollToActive: true,
+          animationDuration: 500,
+          lazyLoadImages: true,
+          onAnimationStart: function() {
+            element.addClass('is_animating');
+          },
+          onAnimationEnd: function() {
+            element.removeClass('is_animating');
+          },
+          onFilterChange: function() {
+            toggleIndicators();
+          }
         });
 
         pageflow.ready.then(function() {
@@ -286,7 +242,7 @@
       });
 
       /* hide text button */
-      var hideText = $('.navigation_hide_text', this.element);
+      var hideText = $('.navigation_hide_text', element);
 
       hideText.click(function() {
         pageflow.hideText.toggle();
@@ -297,24 +253,9 @@
       });
 
       /* fullscreen button */
-      if ($.support.fullscreen) {
-        var fs = $('.navigation_fullscreen', this.element),
-            fullscreenCallback = function(isFullScreen) {
-              fs
-                .toggleClass('active', !!isFullScreen)
-                .updateTitle();
-            };
+      $('.navigation_bar_bottom .fullscreen a', element).fullscreenButton();
 
-        fs.click(function() {
-          fs.toggleClass('fs').updateTitle();
-          $('#outer_wrapper').fullScreen({'callback': fullscreenCallback});
-        });
-      }
-      else {
-        $('.navigation_bar_bottom .fullscreen a', this.element).css('visibility', 'hidden');
-      }
-
-      $('.button, .navigation_mute, .scroll_indicator', this.element).on({
+      $('.button, .navigation_mute, .navigation_scroll_indicator', element).on({
         'touchstart mousedown': function() {
           $(this).addClass('pressed');
         },
@@ -323,7 +264,7 @@
         }
       });
 
-      $('.navigation_share, .navigation_credits', this.element).on({
+      $('.navigation_share, .navigation_credits', element).on({
         'touchstart': function() {
           var element = $(this).parent().parent();
           element.addClass('open');
@@ -338,14 +279,11 @@
         }
       });
 
-      $('li', this.element).on('mouseleave', function() {
+      $('li', element).on('mouseleave', function() {
         $(this).blur();
       });
 
       $('body').on({
-        'mouseup': function() {
-          handlingVolume = false;
-        },
         'pageactivate': function(e) {
           toggleIndicators();
         }

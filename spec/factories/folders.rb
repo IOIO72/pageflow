@@ -1,7 +1,7 @@
 module Pageflow
-  FactoryGirl.define do
+  FactoryBot.define do
     factory :folder, :class => Folder do
-      name "some folder"
+      name { 'some folder' }
       account
     end
   end

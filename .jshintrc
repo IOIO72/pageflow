@@ -3,20 +3,38 @@
   "undef": true,
   "immed": true,
   "trailing": true,
-  "globals": {
-    "jQuery": true,
-    "$": true,
-    "Backbone": true,
-    "Cocktail": true,
-    "_": true,
-    "vjs": true,
-    "Audio5js": true,
-    "I18n": true,
+  "maxlen": 100,
+  "unused": "vars",
+  "expr": true,
+  "camelcase": false,
+  "predef": [
+    "jQuery",
+    "$",
+    "Backbone",
+    "Cocktail",
+    "_",
+    "videojs",
+    "Audio5js",
+    "I18n",
+    "IScroll",
 
-    "pageflow": true,
-    "editor": true,
+    "pageflow",
+    "editor",
+    "PAGEFLOW_EDITOR",
     
-    "confirm": true,
-    "alert": true
-  }
+    "confirm",
+    "alert",
+
+    "chai",
+    "sinon",
+    "support",
+
+    "describe",
+    "it",
+    "before",
+    "after",
+    "beforeEach",
+    "afterEach",
+    "expect"
+  ]
 }

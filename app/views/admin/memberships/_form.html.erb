@@ -1,11 +1,17 @@
-<%= semantic_form_for [:admin, parent, resource] do |f| %>
+<%= admin_form_for [:admin, parent, resource] do |f| %>
+  <% entity_type = resource.entity_type || params[:entity_type] %>
   <%= f.inputs do %>
-    <%= f.input :user,
-                :input_html => { :disabled => (parent_type == :user) },
-                :collection => user_collection_for_parent(parent) %>
-    <%= f.input :entry,
-                :input_html => { :disabled => (parent_type == :entry) },
-                :collection => entry_collection_for_parent(parent) %>
+    <%= membership_user_select(f, parent) %>
+    <%= membership_entity_select(f, parent, entity_type) %>
+    <%= f.hidden_field :entity_type, value: entity_type %>
+  <% end %>
+  <%= f.inputs do %>
+    <%= render partial: 'admin/memberships/role_hint',
+               locals: {entity_type: entity_type
+                                      .gsub('Pageflow::', '').downcase} %>
+    <%= f.input :role,
+                collection: membership_roles_collection(entity_type),
+                include_blank: false %>
   <% end %>
   <%= f.actions do %>
     <%= f.action(:submit) %>

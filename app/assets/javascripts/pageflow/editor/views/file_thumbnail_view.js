@@ -20,6 +20,7 @@ pageflow.FileThumbnailView = Backbone.Marionette.ItemView.extend({
 
       if (stage) {
         this.setStageClassName(stage.get('name'));
+        this.ui.pictogram.toggleClass('action_required', stage.get('action_required'));
         this.ui.pictogram.toggleClass('failed', stage.get('failed'));
       }
       else {
@@ -27,7 +28,7 @@ pageflow.FileThumbnailView = Backbone.Marionette.ItemView.extend({
       }
 
       this.ui.pictogram.addClass(this.model.thumbnailPictogram);
-      this.$el.css('background-image', 'url(' + this._imageUrl() + ')');
+      this.$el.css('background-image', this._imageUrl() ? 'url(' + this._imageUrl() + ')' : '');
       this.$el
         .removeClass('empty')
         .toggleClass('always_picogram', !!this.model.thumbnailPictogram)

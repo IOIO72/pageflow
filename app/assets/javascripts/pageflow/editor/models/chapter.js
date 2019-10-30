@@ -1,39 +1,25 @@
 pageflow.Chapter = Backbone.Model.extend({
   modelName: 'chapter',
   paramRoot: 'chapter',
+  i18nKey: 'pageflow/chapter',
 
   mixins: [pageflow.failureTracking, pageflow.delayedDestroying],
 
   initialize: function(attributes, options) {
-    this.pages = new pageflow.SubsetCollection({
-      parent: pageflow.pages,
-      parentModel: this,
-
-      filter: function(item) {
-        return item.get('chapter_id') === attributes.id;
-      },
-
-      comparator: function(item) {
-        return item.get('position');
-      }
+    this.pages = new pageflow.ChapterPagesCollection({
+      pages: options.pages || pageflow.pages,
+      chapter: this
     });
-
-    this.pages.each(function(page) { page.chapter = this; }, this);
 
     this.listenTo(this, 'change:title', function() {
       this.save();
     });
 
-    this.listenTo(this.pages, 'add', function(model) {
-      model.chapter = this;
-    });
+    this.configuration = new pageflow.ChapterConfiguration(this.get('configuration') || {});
 
-    this.listenTo(this.pages, 'remove', function(model) {
-      model.chapter = null;
-    });
-
-    this.listenTo(this, 'destroy', function() {
-      this.pages.clear();
+    this.listenTo(this.configuration, 'change', function() {
+      this.save();
+      this.trigger('change:configuration', this);
     });
 
     return attributes;
@@ -43,10 +29,29 @@ pageflow.Chapter = Backbone.Model.extend({
     return this.isNew() ? this.collection.url() : '/chapters';
   },
 
-  addPage: function() {
-    this.pages.create({
-      chapter_id: this.get('id'),
+  storylinePosition: function() {
+    return (this.storyline && this.storyline.get('position')) || -1;
+  },
+
+  addPage: function(attributes) {
+    var page = this.buildPage(attributes);
+    page.save();
+
+    return page;
+  },
+
+  buildPage: function(attributes) {
+    var defaults = {
+      chapter_id: this.id,
       position: this.pages.length
+    };
+
+    return this.pages.addAndReturnModel(_.extend(defaults, attributes));
+  },
+
+  toJSON: function() {
+    return _.extend(_.clone(this.attributes), {
+      configuration: this.configuration.toJSON()
     });
   },
 

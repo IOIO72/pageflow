@@ -1,0 +1,229 @@
+label {
+  display: block;
+  position: relative;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  color: #444;
+  font-size: 11px;
+  font-weight: bold;
+
+  .name {
+    display: inline-block;
+    width: 84%;
+    vertical-align: middle;
+    line-height: 15px;
+  }
+}
+
+/** Make sure the label is on top when an inline help text is displayed */
+label:hover span.name {
+  z-index: 4;
+  position: relative;
+}
+
+select,
+textarea,
+input {
+  font-family: Helvetica, "Sans-Serif";
+  display: block;
+  width: 100%;
+  border: solid 1px #888;
+  line-height: 20px;
+  padding: 2px;
+}
+
+textarea,
+input {
+  padding: 2px;
+  margin: 0 -2px;
+}
+
+.invalid input,
+.invalid textarea {
+  border: solid 1px red;
+}
+
+textarea {
+  width: 100%;
+  height: 300px;
+}
+
+textarea.short {
+  height: 100px;
+}
+
+.radio_input,
+.check_box_input {
+  margin: 5px 0;
+  position: relative;
+
+  input {
+    display: inline;
+    width: auto;
+    vertical-align: middle;
+    margin-left: 5px;
+  }
+
+  /** Make sure the input is on top when an inline help text is displayed */
+  &:hover input {
+    z-index: 4;
+    position: relative;
+  }
+
+  label {
+    position: static;
+    display: inline;
+    padding-left: 5px;
+  }
+
+  .inline_help {
+    right: -5px;
+    top: 0;
+  }
+}
+
+.radio_input {
+  padding-top: 10px;
+}
+
+.page_reference_input {
+  p {
+    margin: 10px 0;
+    color: #444;
+  }
+
+  ul.chapters {
+    margin-top: 10px;
+
+    > li {
+      margin: 0;
+      padding: 0;
+
+      > a:first-child {
+        cursor: default;
+        margin: 0;
+        padding: 0;
+        background-color: #fff;
+
+        .pictogram {
+          display: none;
+        }
+      }
+    }
+  }
+
+  ul.pages {
+    margin: 5px 0 10px 0;
+
+    .pictogram {
+      opacity: 0.5;
+    }
+
+    .used .pictogram {
+      opacity: 0.2;
+    }
+  }
+
+  .add_page {
+    display: none;
+  }
+}
+
+.configuration_editor,
+.configuration_editor_tab {
+  margin: 10px 0;
+  padding-bottom: 20px;
+
+  > div {
+    padding: 5px 0;
+  }
+}
+
+.chapter_title,
+.page_type {
+  margin-top: 10px;
+}
+
+.form_fields > div {
+  margin-top: 10px;
+}
+
+.slider_input {
+  .slider {
+    margin: 10px 10px 0 40px;
+  }
+
+  .value {
+    font-size: 11px;
+    margin: 7px 0;
+    float: left;
+  }
+}
+
+.validation {
+  margin: 5px -4px 0 -2px;
+  padding: 5px;
+  border: solid 1px #aaa;
+  position: relative;
+
+  &.pending {
+    background-color: #fffdeb;
+  }
+
+  &.failed {
+    background-color: #ffdddd;
+  }
+
+  li {
+    margin: 5px;
+  }
+}
+
+.inline_help {
+  @include background-icon-right($color: #a0c4e0, $font-size: 16px);
+  @include help-circled-icon;
+
+  &:before {
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 17px;
+    text-align: center;
+    pointer-events: all;
+  }
+
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  width: 30px;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  padding-top: 32px;
+  margin: 1px;
+
+  &:hover {
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-bottom: 12px;
+    margin: 0;
+    background-color: #e4eef6;
+    border: solid 1px #aaa;
+    width: 100%;
+    height: auto;
+    z-index: 3;
+  }
+
+  font-weight: normal;
+  text-transform: none;
+  font-size: 13px;
+}
+
+.configuration_editor a {
+  text-decoration: underline;
+}
+
+.input-hidden_via_binding {
+  display: none;
+}

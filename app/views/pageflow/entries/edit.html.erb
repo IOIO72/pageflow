@@ -1,10 +1,17 @@
+<% @editor_scope = true %>
+
 <% content_for(:head) do %>
+    <%= stylesheet_link_tag('pageflow/application_with_simulated_media_queries', media: 'all', 'data-turbolinks-track' => true) %>
     <%= entry_theme_stylesheet_link_tag(@entry) %>
+    <%= entry_stylesheet_link_tag(@entry) %>
     <%= stylesheet_link_tag 'pageflow/editor', media: "all" %>
     <%= javascript_include_tag 'pageflow/editor' %>
 <% end %>
 
 <main class="ui-layout-center">
+  <%= content_tag(:div, '', id: 'entry_preview', dir: text_direction(@entry.locale)) %>
+  <div id="main_content"></div>
+  <div id="editor_indicators"></div>
 </main>
 
 <sidebar class="ui-layout-east editor">
@@ -12,37 +19,33 @@
     <div class="notifications_container"></div>
     <div class="container"></div>
   </div>
-  <div class="help_button_container"></div>
+  <div class="sidebar_footer_container"></div>
 </sidebar>
 
 <div class="dialog_container">
 </div>
 
-<%= form_for [:editor, @entry, Pageflow::ImageFile.new], :html => {:multipart => true, :id => 'upload'} do |f| %>
-  <%= f.file_field :attachment, :multiple => true, :name => 'image_file[attachment]' %>
+<div class="editor" id="editor_menu_container">
+</div>
+
+<%= form_tag '#', :multipart => true, :id => 'upload' do %>
+  <%= file_field_tag :file, :multiple => true %>
 <% end %>
 
 <script>
   I18n.defaultLocale = "<%= I18n.default_locale %>";
   I18n.locale = "<%= I18n.locale %>";
+  I18n.fallbacks = true;
 
-  jQuery(function() {
-    pageflow.features.detect().then(function() {
-      pageflow.app.start({
-        root: '<%= edit_entry_path(@entry).html_safe %>',
-
-        entry: <%= render_json_seed(@entry) %>,
-        chapters: <%= @entry.chapters.to_json.html_safe %>,
-        pages: <%= @entry.pages.to_json.html_safe %>,
-
-        imageFiles: <%= render_json_seed(@entry.image_files.with_usage_id) %>,
-        videoFiles: <%= render_json_seed(@entry.video_files.with_usage_id) %>,
-        audioFiles: <%= render_json_seed(@entry.audio_files.with_usage_id) %>,
-
-        page_types: <%= page_type_json_seeds %>,
-      });
-    });
-  });
+  pageflow.startEditor({entryId: <%= @entry.id %>})
 </script>
 
-<%= page_type_templates %>
+<% I18n.with_locale(@entry.locale) do %>
+  <%= page_type_templates(@entry) %>
+  <%= render('pageflow/editor/entries/indicators_seed', theme: @entry.theme) %>
+<% end %>
+
+<%= render('pageflow/editor/entries/help_entries_seed', config: @entry_config) %>
+
+<%= render('pageflow/editor/entries/analytics', entry: @entry) %>
+<%= render('pageflow/editor/entries/unsupported_browser_hint') %>

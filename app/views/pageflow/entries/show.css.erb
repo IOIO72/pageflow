@@ -1,39 +1,10 @@
 <%= cache @entry do %>
-
-    <% page_media_breakpoints.each do |style, condition| %>
-      <%= media_query(condition) do %>
-        <% @entry.image_files.each do |image_file| %>
-          .load_images .image_<%= image_file.id %> {
-            background-image: url('<%= image_file.attachment.url(style) %>');
-          }
-        <% end %>
-
-        <% @entry.video_files.each do |video_file| %>
-          .load_images .video_poster_<%= video_file.id %> {
-            background-image: url('<%= video_file.poster.url(style) %>');
-          }
-        <% end %>
-      <% end %>
+  <% page_media_breakpoints.each do |breakpoint_name, condition| %>
+    <%= media_query(condition) do %>
+      <%= file_background_images_css(@entry, breakpoint_name) %>
     <% end %>
+  <% end %>
 
-    <% @entry.image_files.each do |image_file| %>
-      .image_file_link_thumbnail_<%= image_file.id %> {
-        background-image: url('<%= image_file.attachment.url(:link_thumbnail) %>');
-      }
-
-      .image_file_link_thumbnail_large_<%= image_file.id %> {
-        background-image: url('<%= image_file.attachment.url(:link_thumbnail_large) %>');
-      }
-    <% end %>
-
-    <% @entry.video_files.each do |video_file| %>
-      .video_file_link_thumbnail_<%= video_file.id %> {
-        background-image: url('<%= video_file.poster.url(:link_thumbnail) %>');
-      }
-
-      .video_file_link_thumbnail_large_<%= video_file.id %> {
-        background-image: url('<%= video_file.poster.url(:link_thumbnail_large) %>');
-      }
-    <% end %>
-    
+  <%= file_thumbnails_css(@entry) %>
+  <%= render 'pageflow/entries/theming' %>
 <% end %>

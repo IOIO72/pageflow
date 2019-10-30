@@ -1,11 +1,11 @@
 //= require_self
 //= require_tree ./page_types/mixins
-//= require_tree ./page_types
 
 pageflow.pageType = (function() {
   var base = {
     enhance: function(pageElement, configuarion) {},
     prepare: function(pageElement, configuarion) {},
+    unprepare: function(pageElement, configuarion) {},
     preload: function(pageElement, configuarion) {},
     resize: function(pageElement, configuarion) {},
     activating: function(pageElement, configuarion) {},
@@ -13,7 +13,18 @@ pageflow.pageType = (function() {
     deactivating: function(pageElement, configuarion) {},
     deactivated: function(pageElement, configuarion) {},
     update: function(pageElement, configuarion) {},
+    cleanup: function(pageElement, configuarion) {},
+
     embeddedEditorViews: function() {},
+
+    linkedPages: function() {
+      return [];
+    },
+
+    isPageChangeAllowed: function(pageElement, configuarion, options) {
+      return true;
+    },
+
     prepareNextPageTimeout: 200
   };
 

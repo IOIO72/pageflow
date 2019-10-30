@@ -1,0 +1,171 @@
+.toolbar {
+  margin-left: -2px;
+  margin-top: 3px;
+  position: relative;
+
+  > a {
+    @include background-icon-center($font-size: 12px);
+    @include hidden-text;
+
+    margin: 0;
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    vertical-align: top;
+
+    border: solid 1px #eee;
+
+    &:hover {
+      background-color: #eee;
+    }
+  }
+
+  > .wysihtml5-command-active {
+    border: solid 1px #bbb;
+    background-color: #ddd;
+  }
+
+
+  [data-wysihtml5-command="bold"] {
+    @include font-bold-icon;
+  }
+
+  [data-wysihtml5-command="italic"] {
+    @include font-italic-icon;
+  }
+
+  [data-wysihtml5-command="underline"] {
+    @include font-underline-icon;
+  }
+
+  [data-wysihtml5-command="insertOrderedList"] {
+    @include font-list-ol-icon;
+  }
+
+  [data-wysihtml5-command="insertUnorderedList"] {
+    @include font-list-ul-icon;
+  }
+
+  [data-wysihtml5-command="createLink"] {
+    @include link-icon;
+  }
+
+  .link_dialog.for_existing_link {
+    [data-wysihtml5-dialog-action="cancel"] {
+      display: none;
+    }
+
+    [data-wysihtml5-command="removeLink"] {
+      display: block;
+    }
+  }
+
+  [data-wysihtml5-command="removeLink"] {
+    display: none;
+    float: right;
+    margin-top: 8px;
+  }
+
+  .wysihtml5-command-dialog-opened {
+    margin-bottom: 133px;
+  }
+
+  &.fragment_link_panel_active {
+    .wysihtml5-command-dialog-opened {
+      margin-bottom: 143px;
+    }
+
+    .fragment_link_panel {
+      display: block;
+    }
+
+    .url_link_panel {
+      display: none;
+    }
+  }
+
+  .fragment_link_panel {
+    display: none;
+    margin: 0 -2px;
+
+    label {
+      margin: -1px 2px;
+    }
+  }
+
+  .link_type_select {
+    label {
+      display: inline;
+    }
+  }
+
+  .open_in_new_tab_section {
+    position: relative;
+    margin: 4px -4px 0 0;
+    padding-right: 20px;
+
+    label {
+      z-index: 4;
+    }
+
+    .inline_help {
+      top: -3px;
+    }
+  }
+
+  .internal {
+    display: none;
+  }
+
+  label input {
+    display: inline;
+    width: 15px;
+    margin: 5px 0;
+    vertical-align: middle;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .dialog {
+    position: absolute;
+    top: 30px;
+    left: -2px;
+    right: -6px;
+    padding: 5px 10px;
+
+    background-color: #fff;
+    border: solid 1px #444;
+
+    .button {
+      @include button;
+      padding: 5px 10px;
+      margin-top: 5px;
+    }
+  }
+
+  .dialog:before {
+    content: " ";
+    position: absolute;
+    top: -20px;
+    left: 97px;
+    pointer-events: none;
+    border-top: solid 10px transparent;
+    border-right: solid 10px transparent;
+    border-bottom: solid 10px #222;
+    border-left: solid 10px transparent;
+  }
+
+  .dialog:after {
+    content: " ";
+    position: absolute;
+    top: -18px;
+    left: 98px;
+    pointer-events: none;
+    border-top: solid 9px transparent;
+    border-right: solid 9px transparent;
+    border-bottom: solid 9px #fff;
+    border-left: solid 9px transparent;
+  }
+}

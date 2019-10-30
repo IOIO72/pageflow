@@ -1,19 +1,16 @@
-<a class="close" href="#">Schließen</a>
-<a class="publish" href="#">Veröffentlichen...</a>
+<a class="close" href="#"><%= I18n.t('pageflow.editor.templates.edit_entry.close') %></a>
+<a class="publish" href="#" data-tooltip-align="bottom right">
+  <%= I18n.t('pageflow.editor.templates.edit_entry.publish') %>
+</a>
 
 <ul class="menu">
-  <li>    
-    <a class="edit_entry_meta_data" href="#">Titel und Optionen</a>
-    <span class="failure_icon" title="Beim Speichern der Metadaten ist ein Fehler aufgetreten." />
+  <li>
+    <a class="edit_entry_meta_data" href="#" data-path="/meta_data"><%= I18n.t('pageflow.editor.templates.edit_entry.metadata') %></a>
+    <span class="failure_icon" title="<%= I18n.t('pageflow.editor.templates.edit_entry.save_error') %>" />
   </li>
-  <li>    
-    <a class="manage_files" href="#">Dateien verwalten</a>
+  <li>
+    <a class="manage_files" href="#" data-path="/files"><%= I18n.t('pageflow.editor.templates.edit_entry.manage_files') %></a>
   </li>
 </ul>
 
-<h2>Gliederung</h2>
-
-<ul class="chapters outline navigatable">
-</ul>
-
-<a class="add_chapter" href="">Neues Kapitel</a>
+<div class="edit_entry_storylines storyline_picker"></div>

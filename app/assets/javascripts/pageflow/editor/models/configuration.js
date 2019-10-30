@@ -1,5 +1,6 @@
 pageflow.Configuration = Backbone.Model.extend({
   modelName: 'page',
+  i18nKey: 'pageflow/page',
 
   mixins: [pageflow.transientReferences],
 
@@ -9,14 +10,26 @@ pageflow.Configuration = Backbone.Model.extend({
     transition: 'fade',
     text_position: 'left',
     invert: false,
-    hide_title: false
+    hide_title: false,
+    autoplay: true
   },
 
-  getImageFileUrl: function(attribute) {
+  /**
+   * Used by views (i.e. FileInputView) to get id which can be used in
+   * routes to lookup configuration via its page.
+   * @private
+   */
+  getRoutableId: function() {
+    return this.parent.id;
+  },
+
+  getImageFileUrl: function(attribute, options) {
+    options = options || {};
+
     var file = this.getImageFile(attribute);
 
     if (file && file.isReady()) {
-      return file.get('url');
+      return file.get(options.styleGroup ? options.styleGroup + '_url' : 'url');
     }
 
     return '';
@@ -26,17 +39,26 @@ pageflow.Configuration = Backbone.Model.extend({
     return this.getReference(attribute, pageflow.imageFiles);
   },
 
-  getImageFilePosition: function(attribute, coord) {
-    var propertyName = this._imageFilePositionProperty(attribute, coord);
+  getFilePosition: function(attribute, coord) {
+    var propertyName = this.filePositionProperty(attribute, coord);
     return this.has(propertyName) ? this.get(propertyName) : 50;
   },
 
-  setImageFilePosition: function(attribute, coord, value) {
-    var propertyName = this._imageFilePositionProperty(attribute, coord);
+  setFilePosition: function(attribute, coord, value) {
+    var propertyName = this.filePositionProperty(attribute, coord);
     this.set(propertyName, value);
   },
 
-  _imageFilePositionProperty: function(attribute, coord) {
+  setFilePositions: function(attribute, x, y) {
+    var attributes = {};
+
+    attributes[this.filePositionProperty(attribute, 'x')] = x;
+    attributes[this.filePositionProperty(attribute, 'y')] = y;
+
+    this.set(attributes);
+  },
+
+  filePositionProperty: function(attribute, coord) {
     return attribute.replace(/_id$/, '_' + coord);
   },
 
@@ -83,15 +105,15 @@ pageflow.Configuration = Backbone.Model.extend({
   },
 
   _appendSuffix: function(sources) {
-    var page = this.page;
+    var parent = this.parent;
 
-    if (!page || !page.id) {
+    if (!parent || !parent.id) {
       return sources;
     }
 
     return _.map(sources, function(source) {
       var clone = _.clone(source);
-      clone.src = clone.src + '?e=' + page.id;
+      clone.src = clone.src + '?e=' + parent.id + '&t=' + new Date().getTime();
       return clone;
     });
   }

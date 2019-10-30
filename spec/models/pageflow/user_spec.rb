@@ -27,15 +27,23 @@ module Pageflow
 
         expect(user.errors).not_to be_empty
       end
+
+      it 'does not allow to set empty first and last name' do
+        user = create(:user, first_name: 'Bob', last_name: 'Bing')
+
+        user.update_with_password(first_name: '', last_name: '')
+
+        expect(user.reload.first_name).to eq('Bob')
+      end
     end
 
     describe '#destroy_with_password' do
-      it 'allows to destroy the use  when given current password' do
+      it 'allows to destroy the user when given current password' do
         user = create(:user, :password => '@qwert123')
 
         user.destroy_with_password('@qwert123')
 
-        expect(user).to be_new_record
+        expect(user).to be_destroyed
       end
 
       context 'without correct password' do
@@ -47,13 +55,27 @@ module Pageflow
           expect(user.errors[:current_password]).to be_present
         end
 
-        it 'allows to destroy the use  when given current password' do
+        it 'does not allow to destroy the user when given wrong password' do
           user = create(:user, :password => '@qwert123')
 
           user.destroy_with_password('wrong')
 
           expect(user).not_to be_new_record
         end
+      end
+    end
+
+    describe '#locale' do
+      it 'falls back to default_locale' do
+        user = build(:user, locale: '')
+
+        expect(user.locale).to eq(I18n.default_locale)
+      end
+
+      it 'returns present attribute' do
+        user = build(:user, locale: 'fr')
+
+        expect(user.locale).to eq('fr')
       end
     end
   end

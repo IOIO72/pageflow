@@ -1,6 +1,4 @@
-/**
- * A proxy which lazily initializes the real video player.
- */
+// A proxy which lazily initializes the real video player.
 pageflow.VideoPlayer.Lazy = function(template, options) {
   var placeholder = $('<span class="video_placeholder" />'),
       that = this,
@@ -25,8 +23,12 @@ pageflow.VideoPlayer.Lazy = function(template, options) {
     }
   };
 
+  this.isPresent = function() {
+    return videoTag && !disposeTimeout;
+  };
+
   this.dispose = function() {
-    if (videoTag && !pageflow.features.has('mobile platform')) {
+    if (videoTag && !pageflow.browser.has('mobile platform')) {
       this.setEmptySrc();
 
       $(videoPlayer.el()).replaceWith(placeholder);
@@ -52,7 +54,7 @@ pageflow.VideoPlayer.Lazy = function(template, options) {
     }
   };
 
-  /** proxied methods */
+  // proxied methods
 
   this.ready = function(callback) {
     readyCallbacks.add(callback);
@@ -78,11 +80,7 @@ pageflow.VideoPlayer.Lazy = function(template, options) {
     return videoPlayer && videoPlayer.posterImage.unlockShowing();
   };
 
-  this.srcFromOptions = function() {
-    return videoPlayer ? videoPlayer.srcFromOptions() : null;
-  };
-
-  _.each(['play', 'pause', 'prebuffer', 'src', 'on', 'load'], function(method) {
+  _.each(['play', 'playAndFadeIn', 'pause', 'fadeOutAndPause', 'prebuffer', 'src', 'on', 'load', 'currentTime', 'muted'], function(method) {
     that[method] = function(/* args */) {
       var args = arguments;
 
@@ -109,7 +107,10 @@ pageflow.VideoPlayer.Lazy = function(template, options) {
 
     var element = $(htmlWithPreload);
 
-    if (pageflow.features.has('high bandwidth') && !pageflow.features.has('mobile platform')) {
+    if (pageflow.browser.has('mobile platform') && element.attr('data-mobile-poster')) {
+      element.attr('poster', element.attr('data-mobile-poster'));
+    }
+    else if (pageflow.browser.has('high bandwidth') && !pageflow.browser.has('mobile platform')) {
       element.attr('poster', element.attr('data-large-poster'));
 
       element.find('source').each(function() {

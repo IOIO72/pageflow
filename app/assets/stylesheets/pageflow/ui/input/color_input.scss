@@ -1,0 +1,25 @@
+.color_input {
+  .minicolors {
+    box-sizing: border-box;
+    width: 100%;
+    padding-right: 24px;
+  }
+
+  input {
+    padding-left: 26px;
+    width: 100%;
+  }
+
+  .minicolors-input-swatch {
+    top: 3px;
+    left: 2px;
+  }
+
+  &.is_default input {
+    color: #888;
+  }
+
+  .minicolors-focus input {
+    color: #000;
+  }
+}

@@ -1,16 +1,11 @@
-pageflow.AudioFile = Backbone.Model.extend({
-  modelName: 'audio_file',
-  paramRoot: 'audio_file',
-
-  mixins: [pageflow.file, pageflow.encodedFile, pageflow.stageProvider, pageflow.retryable],
-
+pageflow.AudioFile = pageflow.EncodedFile.extend({
   thumbnailPictogram: 'audio',
 
-  urlRoot: function() {
-    return this.isNew() ? this.collection.url() : '/editor/audio_files';
-  },
+  getSources: function(attribute) {
+    if (this.isReady()) {
+      return this.get('sources') ? this.get('sources') : '';
+    }
 
-  isPositionable: function() {
-    return false;
-  }
+    return '';
+  },
 });

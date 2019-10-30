@@ -4,12 +4,30 @@ module Pageflow
     extend ActiveModel::Naming
 
     attr_reader :entry, :revision
+    attr_accessor :share_target
 
-    delegate(:account, :theme, :to_model, :to_key, :persisted?, :to => :entry)
+    delegate(:id, :slug,
+             :account, :theming,
+             :enabled_feature_names,
+             :to_model, :to_key, :persisted?,
+             :authenticate,
+             :first_published_at,
+             :to => :entry)
 
-    delegate(:chapters, :pages,
+    delegate(:widgets,
+             :storylines, :main_storyline_chapters, :chapters, :pages,
+             :find_files, :find_file, :find_file_by_perma_id,
              :image_files, :video_files, :audio_files,
-             :title, :summary, :credits, :manual_start,
+             :summary, :credits, :manual_start,
+             :emphasize_chapter_beginning,
+             :emphasize_new_pages,
+             :share_url, :share_image_id, :share_image_x, :share_image_y,
+             :share_providers, :active_share_providers,
+             :locale,
+             :author, :publisher, :keywords,
+             :theme,
+             :password_protected?,
+             :published_at,
              :to => :revision)
 
     def initialize(entry, revision = nil)
@@ -18,26 +36,75 @@ module Pageflow
       @custom_revision = !!revision
     end
 
+    def title
+      revision.title.presence || entry.title
+    end
+
     def stylesheet_model
       custom_revision? ? revision : entry
     end
 
-    def thumbnail
-      pages.first.try(:thumbnail) || ImageFile.new.processed_attachment
+    def stylesheet_cache_key
+      revision.cache_key_with_version
     end
 
-    def self.find(id)
-      PublishedEntry.new(Entry.published.find(id))
+    def thumbnail_url(*args)
+      thumbnail_file.thumbnail_url(*args)
+    end
+
+    def thumbnail_file
+      share_image_file ||
+        page_thumbnail_file(pages.first) ||
+        PositionedFile.null
+    end
+
+    def page_thumbnail_file(page)
+      return unless page.present?
+      ThumbnailFileResolver.new(self, page.page_type.thumbnail_candidates, page.configuration)
+                           .find_thumbnail
+    end
+
+    def self.find(id, scope = Entry)
+      PublishedEntry.new(scope.published.find(id))
     end
 
     def cache_key
-      "#{self.class.model_name.cache_key}/#{entry.cache_key}-#{revision.cache_key}"
+      [
+        self.class.model_name.cache_key,
+        entry.cache_key,
+        revision.cache_key,
+        theming.cache_key
+      ].compact.join('-')
+    end
+
+    def cache_version
+      [
+        entry.cache_version,
+        revision.cache_version,
+        theming.cache_version
+      ].compact.join('-').presence
+    end
+
+    def home_button
+      HomeButton.new(revision, theming)
+    end
+
+    def overview_button
+      OverviewButton.new(revision)
+    end
+
+    def resolve_widgets(options = {})
+      widgets.resolve(Pageflow.config_for(entry), options)
     end
 
     private
 
     def custom_revision?
       @custom_revision
+    end
+
+    def share_image_file
+      PositionedFile.wrap(find_file_by_perma_id(ImageFile, share_image_id), share_image_x, share_image_y)
     end
   end
 end

@@ -2,36 +2,61 @@ require 'spec_helper'
 
 module Pageflow
   describe Account do
-    describe '#cname_domain' do
-      it 'removes subdomain' do
-        account = build(:account, :cname => 'reportage.wdr.de')
+    describe 'with entries' do
+      it 'cannot be deleted' do
+        account = create(:account)
+        create(:entry, account: account)
 
-        expect(account.cname_domain).to eq('wdr.de');
+        expect { account.destroy }.to raise_error(ActiveRecord::DeleteRestrictionError)
+      end
+    end
+
+    describe 'with users' do
+      it 'cannot be deleted' do
+        account = create(:account)
+        create(:user, :editor, on: account)
+
+        expect { account.destroy }.to raise_error(ActiveRecord::DeleteRestrictionError)
+      end
+    end
+
+    describe '#build_default_theming' do
+      it 'sets default theming to new theming' do
+        account = create(:account)
+
+        theming = account.build_default_theming
+
+        expect(account.default_theming).to eq(theming)
       end
 
-      it 'removes multiple subdomain' do
-        account = build(:account, :cname => 'meine.reportage.wdr.de')
+      it 'initializes account of new theming to self' do
+        account = create(:account)
 
-        expect(account.cname_domain).to eq('wdr.de');
+        theming = account.build_default_theming
+
+        expect(theming.account).to eq(account)
       end
 
-      it 'does not change anything if no subdomain is present' do
-        account = build(:account, :cname => 'wdr.de')
+      it 'destroys default theming when account is destroyed' do
+        account = create(:account)
 
-        expect(account.cname_domain).to eq('wdr.de');
+        expect { account.destroy }.to change(Theming, :count).by(-1)
       end
+    end
 
-      it 'does not change bogus' do
-        account = build(:account, :cname => 'localhost')
+    it 'destroys folders when account is destroyed' do
+      account = create(:account)
+      create(:folder, account: account)
 
-        expect(account.cname_domain).to eq('localhost');
-      end
+      expect { account.destroy }.to change(Folder, :count).by(-1)
+    end
+  end
 
-      it 'is empty if cname is empty' do
-        account = build(:account, :cname => '')
+  describe 'serialization' do
+    it 'does not include features_configuration' do
+      account = build(:account, features_configuration: {some_feature: true})
 
-        expect(account.cname_domain).to eq('');
-      end
+      expect(account.to_json).not_to include('some_feature')
     end
   end
 end

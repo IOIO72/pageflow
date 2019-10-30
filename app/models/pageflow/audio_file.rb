@@ -1,21 +1,12 @@
 module Pageflow
-  class AudioFile < ActiveRecord::Base
-    include EncodedFileStateMachine
-    include UploadedFile
+  class AudioFile < ApplicationRecord
+    include UploadableFile
+    include MediaEncodingStateMachine
 
-    has_attached_file(:attachment_on_filesystem, Pageflow.config.paperclip_filesystem_default_options)
-    has_attached_file(:attachment_on_s3, Pageflow.config.paperclip_s3_default_options)
-
-    def attachment
-      attachment_on_s3
-    end
-
-    def attachment=(value)
-      self.attachment_on_filesystem = value
-    end
+    belongs_to :confirmed_by, class_name: 'User', optional: true
 
     def attachment_s3_url
-      "s3://#{File.join(attachment_on_s3.bucket_name, attachment_on_s3.path)}"
+      "s3://#{File.join(attachment.bucket_name, attachment.path)}"
     end
 
     def m4a

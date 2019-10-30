@@ -1,6 +1,24 @@
 jQuery(function($) {
+  var switchFolderSelect = function() {
+    var account = $(this).find('option:selected').text();
+    if($('#entry_folder_input :selected').parent().attr('label') !== account) {
+      $('option[value=""]').prop('selected', 'selected');
+    };
+    $('#entry_folder_input').val(0).find('optgroup').each(function(){
+      var optgroup_account = this.label,
+          isCorrectAccount = (optgroup_account === account);
+      $(this).children('option').each(function(){
+        var $option = $(this);
+        $option.prop('disabled', !isCorrectAccount);
+      });
+    });
+  };
+
+  $('.entry_account_input').change(switchFolderSelect);
+  $('.entry_account_input').trigger('change');
+
   $('.admin_entries').each(function() {
-    if ($('#folders_sidebar_section .editable').length) {
+    if ($('#folders_sidebar_section').length) {
       $('#index_table_entries tr').draggable({
         helper: function() {
           var title = $('.title a', this).text();
@@ -17,7 +35,7 @@ jQuery(function($) {
         hoverClass: 'drop_over',
 
         accept: function(draggable) {
-          var entryAccountId = $(draggable).find('.account a').data('id');
+          var entryAccountId = $(draggable).find('.col-account a').data('id');
           var folderAccountId = $(this).parents('.accounts > li').data('id');
 
           return !entryAccountId ||
@@ -35,7 +53,7 @@ jQuery(function($) {
 
         drop: function(event, ui) {
           var folderId = $(this).data('id');
-          var entryId = $(ui.draggable).attr('id').replace('entry_', '');
+          var entryId = $(ui.draggable).attr('id').replace('pageflow_entry_', '');
 
           $.ajax({
             url: '/admin/entries/' + entryId,
@@ -52,9 +70,11 @@ jQuery(function($) {
         }
       });
 
-      $('#folders_sidebar_section')
-        .append('<a href="#" class="edit_toggle edit" title="Bearbeiten"></a>')
-        .append('<a href="#" class="edit_toggle done" title="Fertig"></a>');
+      if ($('#folders_sidebar_section a.new').length > 0) {
+        $('#folders_sidebar_section')
+          .append('<a href="#" class="edit_toggle edit" title="Bearbeiten"></a>')
+          .append('<a href="#" class="edit_toggle done" title="Fertig"></a>');
+      }
 
       $('#folders_sidebar_section .edit_toggle').on('click', function() {
         $('#folders_sidebar_section').toggleClass('editable');

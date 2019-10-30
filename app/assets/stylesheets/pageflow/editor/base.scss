@@ -1,0 +1,156 @@
+@import "bourbon";
+
+@import "pageflow/jquery_ui";
+@import "pageflow/ui";
+@import "pageflow/animations";
+
+@import "./blank_entry";
+@import "./dialogs";
+@import "./colors";
+@import "./entry_preview";
+@import "./background_positioning";
+@import "./page_selection";
+@import "./files_explorer";
+@import "./locked";
+@import "./help";
+@import "./indicators";
+@import "./disabled_atmo_indicator";
+@import "./unsupported_browser_hint";
+
+.editor {
+  @import "./change_theme";
+  @extend %pageflow-ui;
+
+  font-family: Helvetica, "Sans-Serif";
+  font-size: 13px;
+
+  padding: 0;
+  display: block;
+  background-color: #ddd;
+  overflow: hidden;
+
+  * {
+    margin: 0;
+    padding: 0;
+  }
+
+  h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: normal;
+    color: #444;
+    margin: 15px 0 5px 0;
+  }
+
+  ul {
+    list-style: none;
+    min-height: 10px;
+  }
+
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  @import "./list";
+  @import "./drop_down_button";
+
+  @import "./outline";
+  @import "./failures";
+  @import "./menu";
+  @import "./inputs";
+  @import "./confirm_upload";
+  @import "./manage_files";
+  @import "./files";
+  @import "./confirm_encoding";
+  @import "./files_gallery";
+  @import "./filtered_files";
+  @import "./file_meta_data";
+  @import "./file_stages";
+  @import "./file_thumbnails";
+  @import "./file_settings_dialog";
+  @import "./info_box";
+  @import "./text_tracks";
+  @import "./static_thumbnails";
+  @import "./wysihtml5";
+  @import "./notifications";
+  @import "./publish_entry";
+  @import "./other_entry_item";
+  @import "./select_button";
+  @import "./quotas";
+  @import "./back_button_decorator";
+  @import "./widgets";
+  @import "./page_links";
+  @import "./storyline_picker";
+  @import "./loading";
+  @import "./sidebar_footer";
+  @import "./emulation_mode_button";
+  @import "./help_image";
+
+  a.publish {
+    @include eye-icon;
+    @include icon-button;
+    float: right;
+  }
+
+  a.close {
+    @include cancel-icon;
+    @include icon-button(#888);
+  }
+
+  a.back {
+    @include left-open-icon;
+    @include icon-button(#888);
+  }
+
+  a.add_chapter,
+  a.add_page {
+    @include plus-circled-icon;
+    @include icon-button;
+  }
+
+  a.destroy {
+    @include icon-button(#d00);
+    @include trash-icon;
+    float: right;
+  }
+
+  a.upload {
+    @include icon-button;
+    @include up-icon;
+    float: right;
+  }
+
+  .scrolling {
+    padding: 10px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 25px;
+    overflow: auto;
+  }
+}
+
+main.ui-layout-pane {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background-color: #000;
+}
+
+main > div {
+  height: 100%;
+
+  > .container {
+    height: 100%;
+  }
+}
+
+#help_entries_seed {
+  display: none;
+}
+
+form#upload {
+  visibility: hidden;
+}

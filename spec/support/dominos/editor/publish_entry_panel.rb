@@ -3,6 +3,8 @@ module Dom
     class PublishEntryPanel < Domino
       selector 'div.publish_entry'
 
+      attribute :exhausted_message, '.exhausted_message'
+
       def save_button
         node.find('button.save')
       end
@@ -32,6 +34,11 @@ module Dom
         save
       end
 
+      def activate_password_protection(password)
+        node.find('input[name=password_protected]').click
+        node.find('input[name=password]').set(password)
+      end
+
       def activate_publish_forever
         node.find('#publish_entry_forever').click
       end
@@ -48,6 +55,8 @@ module Dom
 
       def blur_input_fields
         node.find('h2').click
+        # Wait for date drop down to fade out
+        sleep 1
       end
     end
   end

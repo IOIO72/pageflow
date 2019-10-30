@@ -30,16 +30,20 @@ pageflow.VideoPlayer.prebuffering = function(player) {
     var deferred = $.Deferred();
     var timeout;
 
-    if (pageflow.features.has('prebuffering support')) {
+    if (pageflow.browser.has('prebuffering support')) {
       if (!player.isBufferedAhead(delta) && !player.prebufferDeferred) {
-        pageflow.log('prebuffering video ' + player.srcFromOptions());
+        pageflow.log('prebuffering video ' + player.src());
 
         timeout = function() {
           setTimeout(function() {
+            if (!player.prebufferDeferred) {
+              return;
+            }
+
             count++;
 
             if (player.isBufferedAhead(delta) || count > maxCount) {
-              pageflow.log('finished prebuffering video ' + player.srcFromOptions());
+              pageflow.log('finished prebuffering video ' + player.src());
               deferred.resolve();
               player.prebufferDeferred = null;
             }
@@ -67,8 +71,13 @@ pageflow.VideoPlayer.prebuffering = function(player) {
   };
 
   var originalPause = player.pause;
+
   player.pause = function() {
     player.abortPrebuffering();
     return originalPause.apply(this, arguments);
   };
+
+  player.one('dispose', function() {
+    player.abortPrebuffering();
+  });
 };

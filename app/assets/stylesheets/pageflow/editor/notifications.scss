@@ -1,0 +1,79 @@
+.notifications {
+  background-color: #fff;
+  border-bottom: solid 1px #ccc;
+  color: #888;
+  font-size: 11px;
+
+  margin: -10px -10px 10px -10px;
+
+  &.uploading li.uploading,
+  &.saving li.saving,
+  &.failed li.failed,
+  &.has_confirmable_files li.confirmable_files {
+    display: block;
+  }
+
+  &.uploading li.saved,
+  &.saving li.saved,
+  &.failed li.saved,
+  &.saving li.failed,{
+    display: none;
+  }
+
+  .count {
+    font-weight: bold;
+  }
+
+  .display_confirmable_files,
+  .retry {
+    text-decoration: underline;
+  }
+
+  .display_confirmable_files {
+    display: block;
+    margin: 8px 0;
+  }
+
+  li {
+    @include background-icon-left($font-size: 15px, $left: 15px, $color: #888);
+    padding: 4px 10px 4px 35px;
+  }
+
+  li.uploading {
+    @include background-icon-animation(blink);
+    @include background-icon-color(#444);
+    @include up-bold-icon;
+    color: #444;
+    display: none;
+  }
+
+  li.saving {
+    @include background-icon-animation(blink);
+    @include background-icon-color(#444);
+    @include arrows-ccw-icon;
+    color: #444;
+    display: none;
+  }
+
+  li.failed {
+    @include background-icon-animation(blink);
+    @include background-icon-color(#d00);
+    @include attention-icon;
+    color: #444;
+    display: none;
+  }
+
+  li.confirmable_files {
+    @include background-icon-left($font-size: 15px, $top: 15px, $left: 15px, $color: #888);
+    @include background-icon-animation(blink);
+    @include bell-icon;
+    background-color: #D2E5FA;
+    color: #000;
+    padding-top: 8px;
+    display: none;
+  }
+
+  li.saved {
+    @include check-icon;
+  }
+}

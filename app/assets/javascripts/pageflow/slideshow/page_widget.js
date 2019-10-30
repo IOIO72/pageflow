@@ -1,34 +1,68 @@
 (function($) {
-  $.widget('pageflow.page', {
+  $.widget('pageflow.nonLazyPage', {
+    widgetEventPrefix: 'page',
     _create: function() {
       this.configuration = this.element.data('configuration') || this.options.configuration;
       this.index = this.options.index;
 
-      this.element.addClass(this.configuration.transition || "fade");
+      this._setupNearBoundaryCssClasses();
+      this._setupContentLinkTargetHandling();
 
-      this.preloaded = false;
       this.reinit();
+    },
+
+    getPermaId: function() {
+      return parseInt(this.element.attr('id'), 10);
+    },
+
+    getConfiguration: function() {
+      return this.configuration;
+    },
+
+    update: function(configuration) {
+      _.extend(this.configuration, configuration.attributes);
+      this.pageType.update(this.element, configuration);
     },
 
     reinit: function() {
       this.pageType = pageflow.pageType.get(this.element.data('template'));
       this.element.data('pageType', this.pageType);
+      this.preloaded = false;
 
-      this.content = this.element.find('.scroller');
-      this.content.scroller();
-      this.content.hideTextOnSwipe();
+      if (this.pageType.scroller === false) {
+        this.content = $();
+      }
+      else {
+        this.content = this.element.find('.scroller');
+      }
+
+      this.content.scroller(this.pageType.scrollerOptions || {});
+      this.pageType.scroller = this.content.scroller('instance');
+      this.pageType.scrollIndicator = new pageflow.ScrollIndicator(this.element);
+
+      this._setupHideTextOnSwipe();
 
       this._triggerPageTypeHook('enhance');
+      this._trigger('enhanced');
     },
 
     reactivate: function() {
       if (this.element.hasClass('active')) {
+        this.preload();
+
         this.content.scroller('enable');
+        this.content.scroller('resetPosition');
         this.content.scroller('afterAnimationHook');
 
         this._triggerPageTypeHook('activating');
         this._triggerDelayedPageTypeHook('activated');
       }
+    },
+
+    cleanup: function() {
+      this._triggerPageTypeHook('deactivating');
+      this._triggerDelayedPageTypeHook('deactivated');
+      this._triggerPageTypeHook('cleanup');
     },
 
     refreshScroller: function() {
@@ -43,21 +77,32 @@
       this.element.addClass('active');
 
       this.content.scroller('enable');
+      this.content.scroller('resetPosition');
       this.content.scroller('afterAnimationHook');
 
       this._trigger('activate', null, {page: this});
       this._triggerPageTypeHook('activating');
       this._triggerDelayedPageTypeHook('activated');
-
-      this.prepareTimeout = setTimeout(_.bind(this.triggerPrepareNextPage, this), this.prepareNextPageTimeout());
     },
 
     prepare: function() {
       this._triggerPageTypeHook('prepare');
     },
 
+    unprepare: function() {
+      this._triggerPageTypeHook('unprepare');
+    },
+
     prepareNextPageTimeout: function() {
       return this.pageType.prepareNextPageTimeout;
+    },
+
+    linkedPages: function() {
+      return this._triggerPageTypeHook('linkedPages');
+    },
+
+    isPageChangeAllowed: function(options) {
+      return this._triggerPageTypeHook('isPageChangeAllowed', options);
     },
 
     preload: function() {
@@ -73,64 +118,125 @@
     },
 
     activate: function(options) {
-      this.element
-        .removeClass('animate-out-forwards animate-out-backwards')
-        .addClass('animate-in-' + options.direction);
+      options = options || {};
 
       setTimeout(_.bind(function() {
         this.element.addClass('active');
-      }, this), 5);
+      }, this), 0);
 
-      setTimeout(_.bind(function() {
+      var duration = this.animateTransition('in', options, function() {
+        this.content.scroller('enable');
         this.content.scroller('afterAnimationHook');
-        this.element.removeClass('animate-in-forwards animate-in-backwards');
 
         this._triggerDelayedPageTypeHook('activated');
-      }, this), 1100);
+      });
 
-      this.content.scroller('enable');
+      this.content.scroller('resetPosition', {position: options.position});
       this._trigger('activate', null, {page: this});
-      this._triggerPageTypeHook('activating');
+      this._triggerPageTypeHook('activating', {position: options.position});
 
-      this.prepareTimeout = setTimeout(_.bind(this.triggerPrepareNextPage, this), this.prepareNextPageTimeout());
+      return duration;
     },
 
     deactivate: function(options) {
-      this.element
-        .removeClass('active animate-in-forwards animate-in-backwards')
-        .addClass('animate-out-' + options.direction);
+      options = options || {};
 
-      setTimeout(_.bind(function() {
-        this.element.removeClass('animate-out-forwards animate-out-backwards');
+      this.element.removeClass('active');
+
+      var duration = this.animateTransition('out', options, function() {
         this._triggerPageTypeHook('deactivated');
-      }, this), 1100);
+      });
 
       this.content.scroller('disable');
       this._trigger('deactivate');
       this._triggerPageTypeHook('deactivating');
 
-      clearTimeout(this.prepareTimeout);
+      return duration;
+    },
+
+    animateTransition: function(destination, options, callback) {
+      var otherDestination = destination === 'in' ? 'out' : 'in';
+      var transition = pageflow.pageTransitions.get(options.transition ||
+                                                    this.configuration.transition ||
+                                                    'fade');
+      var animateClass = transition.className + ' animate-' + destination + '-' + options.direction;
+
+      this.element
+        .removeClass('animate-' + otherDestination + '-forwards animate-' + otherDestination + '-backwards')
+        .addClass(animateClass);
+
+      setTimeout(_.bind(function() {
+        this.element.removeClass(animateClass);
+        callback.call(this);
+      }, this), transition.duration);
+
+      return transition.duration;
     },
 
     _triggerDelayedPageTypeHook: function(name) {
       var that = this;
-      var handle = pageflow.manualStart.wait(function() {
+      var handle = pageflow.delayedStart.wait(function() {
         that._triggerPageTypeHook(name);
       });
 
-      this.element.one('deactivate', function() {
+      this.element.one('pagedeactivate', function() {
         handle.cancel();
       });
     },
 
-    _triggerPageTypeHook: function(name) {
-      return this.pageType[name](this.element, this.configuration);
+    _triggerPageTypeHook: function(name, options) {
+      return this.pageType[name](this.element, this.configuration, options || {});
     },
 
-    triggerPrepareNextPage: function() {
-      if($(this.element).next(".page").length > 0) {
-        $(this.element).next(".page").page('prepare', {});
+    _setupHideTextOnSwipe: function() {
+      if (pageflow.entryData.getThemingOption('hide_text_on_swipe') &&
+          !pageflow.navigationDirection.isHorizontal() &&
+          !this.pageType.noHideTextOnSwipe) {
+        this.element.hideTextOnSwipe({
+          eventTargetSelector: // legacy ERB pages
+                               '.content > .scroller,' +
+                               // React based pages
+                               '.content > .scroller-wrapper > .scroller,' +
+                               // internal links/text page
+                               '.content.scroller'
+        });
       }
+    },
+
+    _setupNearBoundaryCssClasses: function() {
+      var element = this.element;
+
+      _(['top', 'bottom']).each(function(boundary) {
+        element.on('scrollernear' + boundary, function() {
+          element.addClass('is_near_' + boundary);
+        });
+
+        element.on('scrollernotnear' + boundary, function() {
+          element.removeClass('is_near_' + boundary);
+        });
+      });
+    },
+
+    _setupContentLinkTargetHandling: function() {
+      this._on({
+        'click .page_text .paragraph a': function(event) {
+          var href = $(event.currentTarget).attr('href');
+          var target = PAGEFLOW_EDITOR ? '_blank' : $(event.currentTarget).attr('target');
+
+          if (href[0] === '#') {
+            pageflow.slides.goToByPermaId(href.substr(1));
+          }
+          else {
+            // There was a time when the rich text editor did not add
+            // target attributes to inline links even though it should
+            // have. Ensure all content links to external urls open in
+            // new tab, except explicitly specified otherwise by editor.
+            window.open(href, target || '_blank');
+          }
+
+          event.preventDefault();
+        }
+      });
     }
   });
 }(jQuery));

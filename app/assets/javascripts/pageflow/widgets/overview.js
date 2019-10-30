@@ -1,5 +1,3 @@
-/*global pageflow, IScroll, jQuery*/
-
 jQuery(function($) {
   $.widget('pageflow.overview', {
     _create: function() {
@@ -10,8 +8,7 @@ jQuery(function($) {
         noOfChapterParts = chapterParts.size(),
         scrollerWidth = noOfChapterParts * chapterParts.outerWidth(true),
         closeButton = $('.close', this.element),
-        indexButton = $('.navigation .navigation_index'),
-        homeButton = $('.navigation .navigation_home'),
+        indexButton = $('.navigation_index'),
         overview = $('.overview'),
         wrapper = $('.wrapper', this.element);
 
@@ -19,17 +16,27 @@ jQuery(function($) {
         var scrollIndicator = $('.slideshow .scroll_indicator');
 
         overview.toggleClass('active', state);
+        overview.loadLazyImages();
+
         indexButton
           .toggleClass('active', state)
           .updateTitle();
 
-        $('.page .content').toggleClass('hidden', state);
+        $('section.page').toggleClass('hidden_by_overlay', state);
         scrollIndicator.toggleClass('hidden', state);
+
+        if (overview.hasClass('active')) {
+          pageflow.events.once('page:change', function() {
+            toggleContent(false);
+          }, that);
+        }
+        else {
+          pageflow.events.off('page:change', null, that);
+        }
       };
 
       var goToPage = function() {
         if (!$(this).hasClass('active')) {
-          toggleContent();
           pageflow.slides.goToById(this.getAttribute("data-link"));
         }
       };
@@ -55,16 +62,17 @@ jQuery(function($) {
         });
 
         wrapper.pageNavigationList({
-          scroller: scroller
+          scroller: scroller,
+          scrollToActive: '.ov_chapter'
         });
 
-        this.element.find('.scroll_indicator.left').scrollButton({
+        this.element.find('.overview_scroll_indicator.left').scrollButton({
           scroller: scroller,
           page: true,
           direction: 'left'
         });
 
-        this.element.find('.scroll_indicator.right').scrollButton({
+        this.element.find('.overview_scroll_indicator.right').scrollButton({
           scroller: scroller,
           page: true,
           direction: 'right'
@@ -87,26 +95,35 @@ jQuery(function($) {
       });
 
       if (scrollerWidth < wrapper.width()) {
-        var closeButtonLeft = Math.max(400, scrollerWidth - closeButton.width() - 10);
+        var closeButtonPos = Math.max(400, scrollerWidth - closeButton.width() - 10);
 
-        closeButton.css({
-          left: closeButtonLeft + 'px',
-          right: 'auto'
-        });
+        if (isDirLtr(closeButton)) {
+          closeButton.css({
+            left: closeButtonPos + 'px',
+            right: 'auto'
+          });
+        }
+        else {
+          closeButton.css({
+            right: closeButtonPos + 'px',
+            left: 'auto'
+          });
+        }
       }
 
       closeButton.click(toggleContent);
       indexButton.click(toggleContent);
-
-      homeButton.click(function() {
-        toggleContent(false);
-      });
 
       $('body').keyup(function(e) {
         if (e.which == 27 && overview.hasClass('active')) {
           toggleContent();
         }
       });
+
+      function isDirLtr(el) {
+        var styles = window.getComputedStyle(el[0]);
+        return styles.direction == 'ltr';
+      }
     }
   });
 });

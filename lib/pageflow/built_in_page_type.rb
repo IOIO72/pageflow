@@ -1,42 +1,76 @@
 module Pageflow
-  # Definition of page type located inside the Pageflow gem.
-  class BuiltInPageType < PageType
-    attr_reader :name
-
-    def initialize(name)
-      @name = name.to_s
-    end
-
-    def template_path
-      File.join('pageflow', 'pages', 'templates', "_#{name}.html.erb")
-    end
-
-    def translation_key
-      "activerecord.values.page.template.#{name}"
-    end
-
-    # Factory methods to decouple Pageflow initializers from concrete
-    # page type classes, so we might decide later to create a
-    # VideoPageType subclass etc.
-
-    def self.audio
-      new('audio')
-    end
-
-    def self.background_image
-      new('background_image')
-    end
-
-    def self.background_video
-      new('background_video')
-    end
-
-    def self.internal_links
-      new('internal_links')
+  # @api private
+  module BuiltInPageType
+    def self.plain
+      Pageflow::React.create_page_type('background_image',
+                                       thumbnail_candidates: default_thumbnail_candidates,
+                                       export_version: Pageflow::VERSION,
+                                       file_types: [
+                                         BuiltInFileType.image,
+                                         BuiltInFileType.video
+                                       ])
     end
 
     def self.video
-      new('video')
+      Pageflow::React.create_page_type('video',
+                                       thumbnail_candidates: video_thumbnail_candidates,
+                                       export_version: Pageflow::VERSION,
+                                       file_types: [
+                                         BuiltInFileType.image,
+                                         BuiltInFileType.video
+                                       ])
+    end
+
+    def self.audio
+      Pageflow::React.create_page_type('audio',
+                                       thumbnail_candidates: default_thumbnail_candidates,
+                                       export_version: Pageflow::VERSION,
+                                       file_types: [
+                                         BuiltInFileType.audio,
+                                         BuiltInFileType.image,
+                                         BuiltInFileType.video
+                                       ])
+    end
+
+    def self.video_thumbnail_candidates
+      [
+        {file_collection: 'image_files', attribute: 'thumbnail_image_id'},
+        {file_collection: 'image_files', attribute: 'poster_image_id'},
+        {file_collection: 'video_files', attribute: 'video_file_id'}
+      ]
+    end
+
+    def self.default_thumbnail_candidates
+      [
+        {
+          file_collection: 'image_files',
+          attribute: 'thumbnail_image_id'
+        },
+        {
+          file_collection: 'image_files',
+          attribute: 'background_image_id',
+          unless: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        },
+        {
+          file_collection: 'image_files',
+          attribute: 'poster_image_id',
+          if: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        },
+        {
+          file_collection: 'video_files',
+          attribute: 'video_file_id',
+          if: {
+            attribute: 'background_type',
+            value: 'video'
+          }
+        }
+      ]
     end
   end
 end

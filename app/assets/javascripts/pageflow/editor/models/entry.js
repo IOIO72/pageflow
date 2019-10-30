@@ -2,93 +2,108 @@ pageflow.Entry = Backbone.Model.extend({
   paramRoot: 'entry',
   urlRoot: '/entries',
   modelName: 'entry',
+  i18nKey: 'pageflow/entry',
+  collectionName: 'entries',
 
-  mixins: [pageflow.filesCountWatcher, pageflow.polling, pageflow.failureTracking],
+  mixins: [pageflow.filesCountWatcher,
+           pageflow.polling,
+           pageflow.failureTracking],
 
-  initialize: function() {
-    this.chapters = pageflow.chapters;
+  initialize: function(attributes, options) {
+    options = options || {};
+
+    this.configuration = new pageflow.EntryConfiguration(this.get('configuration') || {});
+    this.configuration.parent = this;
+
+    this.themes = options.themes || pageflow.themes;
+    this.files = options.files || pageflow.files;
+    this.fileTypes = options.fileTypes || pageflow.editor.fileTypes;
+    this.storylines = options.storylines || pageflow.storylines;
+    this.storylines.parentModel = this;
+    this.chapters = options.chapters || pageflow.chapters;
     this.chapters.parentModel = this;
     this.pages = pageflow.pages;
+    this.widgets = options.widgets;
 
     this.imageFiles = pageflow.imageFiles;
     this.videoFiles = pageflow.videoFiles;
     this.audioFiles = pageflow.audioFiles;
 
+    this.fileTypes.each(function(fileType) {
+      this.watchFileCollection(fileType.collectionName, this.getFileCollection(fileType));
+    }, this);
+
+    this.listenTo(this.storylines, 'sort', function() {
+      this.pages.sort();
+    });
+
     this.listenTo(this.chapters, 'sort', function() {
       this.pages.sort();
     });
 
-    this.listenTo(this, 'change:title change:summary change:credits change:manual_start', function() {
+    this.listenTo(this.configuration, 'change', function() {
+      this.trigger('change:configuration');
       this.save();
     });
 
-    this.watchFileCollection('image_files', this.imageFiles);
-    this.watchFileCollection('video_files', this.videoFiles);
-    this.watchFileCollection('audio_files', this.audioFiles);
-  },
-
-  addChapter: function() {
-    this.chapters.create({
-      entry_id: this.get('id'),
-      position: this.chapters.length
+    this.listenTo(this.configuration, 'change:locale', function() {
+      this.once('sync', function() {
+        // No other way of updating page templates used in
+        // EntryPreviewView at the moment.
+        location.reload();
+      });
     });
   },
 
-  addFile: function(file) {
-    var record;
-
-    if (file.type.match(/^image/)) {
-      record = new pageflow.ImageFile({
-        state: 'uploading',
-        file_name: file.name
-      });
-      pageflow.imageFiles.add(record);
-    }
-    else if (file.type.match(/^video/)) {
-      record = new pageflow.VideoFile({
-        state: 'uploading',
-        file_name: file.name
-      });
-      pageflow.videoFiles.add(record);
-    }
-    else if (file.type.match(/^audio/)) {
-      record = new pageflow.AudioFile({
-        state: 'uploading',
-        file_name: file.name
-      });
-      pageflow.audioFiles.add(record);
-    }
-
-    return record;
+  getTheme: function() {
+    return this.themes.findByName(this.configuration.get('theme_name'));
   },
 
-  addFileUsage: function(file) {
-    this.createFileUsage(file, { success: function(usage) {
-      file.set('usage_id', usage.get('id'));
-      this.addFileToCollection(file);
-    }.bind(this)});
+  addStoryline: function(attributes) {
+    var storyline = this.buildStoryline(attributes);
+    storyline.save();
+
+    return storyline;
   },
 
-  createFileUsage: function(file, options) {
-    var file_usages = new pageflow.FileUsagesCollection();
+  buildStoryline: function(attributes) {
+    var defaults = {
+      title: '',
+    };
 
-    return file_usages.create({
-      file_id: file.get('id'),
-      file_type: file.get('typeName')
-    }, options);
-
+    return this.storylines.addAndReturnModel(_.extend(defaults, attributes));
   },
 
-  addFileToCollection: function (file) {
-    this.getFileCollection(file.get('typeName')).add(file);
+  scaffoldStoryline: function(options) {
+    var scaffold = new pageflow.StorylineScaffold(this, options);
+    scaffold.create();
+
+    return scaffold;
   },
 
-  getFileCollection: function(filetype) {
-    return this[lowerCaseFirst(filetype) + 's'];
+  addChapterInNewStoryline: function(options) {
+    return this.scaffoldStoryline(_.extend({depth: 'chapter'}, options)).chapter;
+  },
 
-    function lowerCaseFirst(string) {
-      return string.charAt(0).toLowerCase() + string.slice(1);
-    }
+  addPageInNewStoryline: function(options) {
+    return this.scaffoldStoryline(_.extend({depth: 'page'}, options)).page;
+  },
+
+  reuseFile: function(otherEntry, file) {
+    var entry = this;
+
+    pageflow.FileReuse.submit(otherEntry, file, {
+      entry: entry,
+
+      success: function(model, response) {
+        entry._setFiles(response, {merge: false, remove: false});
+        entry.trigger('use:files');
+      }
+    });
+  },
+
+  getFileCollection: function(fileTypeOrFileTypeName) {
+    return this.files[fileTypeOrFileTypeName.collectionName || fileTypeOrFileTypeName];
   },
 
   pollForPendingFiles: function() {
@@ -99,36 +114,39 @@ pageflow.Entry = Backbone.Model.extend({
     this.togglePolling(this.get('pending_files_count') > 0);
   },
 
-  publish: function(attrs) {
-    var model = this;
-
-    return Backbone.sync('create', this, {
-      url: this.url() + '/revisions',
-      attrs: attrs,
-
-      success: function(response) {
-        model.parse(response);
-      }
-    });
-  },
-
   parse: function(response, options) {
     if (response) {
-      this.set(_.pick(response, 'published', 'published_until'));
-
-      this.imageFiles.set(response.image_files, {add: false, remove: false});
-      this.videoFiles.set(response.video_files, {add: false, remove: false});
-      this.audioFiles.set(response.audio_files, {add: false, remove: false});
-
-      delete response.image_files;
-      delete response.video_files;
-      delete response.audio_files;
+      this.set(_.pick(response, 'published', 'published_until', 'password_protected'));
+      this._setFiles(response, {
+        add: false,
+        remove: false,
+        applyConfigurationUpdaters: true
+      });
     }
 
     return response;
   },
 
+  _setFiles: function(response, options) {
+    this.fileTypes.each(function(fileType) {
+      var filesAttributes = response[fileType.collectionName];
+
+      // Temporary solution until rights attributes is moved to
+      // configuration hash. If we are polling, prevent overwriting
+      // the rights attribute.
+      if (options.merge !== false) {
+        filesAttributes = _.map(filesAttributes, function(fileAttributes) {
+          return _.omit(fileAttributes, 'rights');
+        });
+      }
+
+      this.getFileCollection(fileType).set(filesAttributes,
+                                           _.extend({fileType: fileType}, options));
+      delete response[fileType.collectionName];
+    }, this);
+  },
+
   toJSON: function() {
-    return _.pick(this.attributes, 'title', 'summary', 'credits', 'manual_start');
+    return this.configuration.toJSON();
   }
 });

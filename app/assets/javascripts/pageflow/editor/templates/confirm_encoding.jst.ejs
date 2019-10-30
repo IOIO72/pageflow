@@ -1,0 +1,22 @@
+<div class="blank_slate">
+  <p>
+      <%= I18n.t('pageflow.editor.templates.confirm_encoding.all_released') %>
+  </p>
+  <p>
+      <%= I18n.t('pageflow.editor.templates.confirm_encoding.link_to_progress', {
+            link: '<a href="#/files/video_files">'+I18n.t('pageflow.editor.templates.confirm_encoding.manage_files')+'</a>'})
+      %>
+  </p>
+</div>
+
+<div class="video_files_panel">
+  <h2><%= I18n.t('pageflow.editor.templates.confirm_encoding.videos_tab') %></h2>
+</div>
+
+<div class="audio_files_panel">
+  <h2><%= I18n.t('pageflow.editor.templates.confirm_encoding.audios_tab') %></h2>
+</div>
+
+<div class="summary">
+</div>
+<button class="confirm"><%= I18n.t('pageflow.editor.templates.confirm_encoding.confirm_button') %></button>

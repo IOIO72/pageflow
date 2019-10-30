@@ -3,15 +3,13 @@ module Pageflow
     class FilesController < Pageflow::ApplicationController
       respond_to :json
 
-      before_filter :authenticate_user!
+      before_action :authenticate_user!
 
       def index
         entry = DraftEntry.find(params[:entry_id])
 
         authorize!(:use_files, entry.to_model)
-        @files = entry.send(collection_name).with_usage_id
-        @model_name = model_name
-        @collection_name = collection_name.to_s
+        @files = entry.find_files(file_type.model)
 
         respond_with(:editor, @files)
       end
@@ -21,60 +19,120 @@ module Pageflow
         authorize!(:edit, entry.to_model)
         verify_edit_lock!(entry)
 
-        @file = entry.create_file(model, file_params)
-        @file.publish!
-
-        @model_name = model_name
-        @collection_name = collection_name.to_s
+        @file = entry.create_file!(file_type, create_params)
+        @file.publish! if params[:no_upload]
 
         respond_with(:editor, @file)
+      rescue ActiveRecord::RecordInvalid, DraftEntry::InvalidForeignKeyCustomAttributeError => e
+        debug_log_with_backtrace(e)
+        head :unprocessable_entity
+      end
+
+      def reuse
+        entry = DraftEntry.find(params[:entry_id])
+        other_entry = DraftEntry.find(file_reuse_params[:other_entry_id])
+
+        file_reuse = FileReuse.new(entry, other_entry, file_type, file_reuse_params[:file_id])
+
+        authorize!(:edit, entry.to_model)
+        authorize!(:use, file_reuse.file.to_model)
+        verify_edit_lock!(entry)
+
+        file_reuse.save!
+
+        redirect_to(entry_url(entry))
       end
 
       def retry
-        file = model.find(params[:id])
+        entry = DraftEntry.find(params[:entry_id])
+        file = entry.find_file(file_type.model, params[:id])
 
-        authorize!(:retry, file)
-        verify_edit_lock!(file.entry)
+        authorize!(:retry, file.to_model)
         file.retry!
 
-        respond_with(:editor, file)
+        respond_with(:editor,
+                     file,
+                     location: editor_entry_file_url(file,
+                                                     entry,
+                                                     collection_name: params[:collection_name]))
+      end
+
+      def publish
+        entry = DraftEntry.find(params[:entry_id])
+        file = entry.find_file(file_type.model, params[:id])
+
+        authorize!(:update, file.to_model)
+        file.publish!
+
+        head(:no_content)
       end
 
       def update
-        file = model.find(params[:id])
+        entry = DraftEntry.find(params[:entry_id])
+        file = entry.find_file(file_type.model, params[:id])
 
-        authorize!(:update, file)
-        verify_edit_lock!(file.entry)
+        authorize!(:update, file.to_model)
         file.update_attributes!(update_params)
 
         head(:no_content)
       end
 
-      protected
+      def destroy
+        entry = DraftEntry.find(params[:entry_id])
+        file = entry.find_file(file_type.model, params[:id])
 
-      def model
-        raise NotImplementedError
+        authorize!(:edit, entry.to_model)
+        verify_edit_lock!(entry)
+        entry.remove_file(file)
+
+        head(:no_content)
       end
 
       private
 
-      def collection_name
-        model.name.underscore.split('/').last.pluralize.to_sym
+      def create_params
+        file_params.permit(:file_name, :content_type, :file_size)
+          .merge(file_configuration_params)
+          .merge(file_parent_file_params)
+          .merge(file_custom_params)
       end
 
-      def model_name
-        model.name.underscore.split('/').last.to_sym
-      end
-
-      def file_params
-        params.require(model_name)
-          .permit(:attachment => [:tmp_path, :original_name, :content_type])
-          .merge(params.require(model_name).permit(:attachment))
+      def file_reuse_params
+        params.require(:file_reuse).permit(:other_entry_id, :file_id)
       end
 
       def update_params
-        params.require(model_name).permit(:rights)
+        file_configuration_params
       end
+
+      def file_configuration_params
+        configuration = file_params[:configuration].try(:permit!)
+
+        file_params
+          .permit(:rights)
+          .merge(configuration: configuration)
+      end
+
+      def file_parent_file_params
+        file_params.permit(:parent_file_id, :parent_file_model_type)
+      end
+
+      def file_custom_params
+        file_params.permit(file_type
+                             .custom_attributes
+                             .select { |_, options| options[:permitted_create_param] }
+                             .keys)
+      end
+
+      def file_params
+        params.require(file_type.param_key)
+      end
+
+      def file_type
+        @file_type ||= Pageflow.config.file_types.find_by_collection_name!(params[:collection_name])
+      end
+
+      helper_method :file_type
     end
   end
 end

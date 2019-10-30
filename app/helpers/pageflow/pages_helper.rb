@@ -1,148 +1,103 @@
 module Pageflow
   module PagesHelper
+    def render_page_template(page, locals = {})
+      page_type = Pageflow.config.page_types.find_by_name!(page.template)
+
+      render(template: page_type.template_path,
+             locals: locals.merge(page: page,
+                                  configuration: page.configuration))
+    end
+
     def page_css_class(page)
       classes = ['page']
       classes << 'invert' if page.configuration['invert']
       classes << 'hide_title' if page.configuration['hide_title']
       classes << "text_position_#{page.configuration['text_position']}" if page.configuration['text_position'].present?
+      classes << "scroll_indicator_mode_#{page.configuration['scroll_indicator_mode']}" if page.configuration['scroll_indicator_mode'].present?
+      classes << "scroll_indicator_orientation_#{page.configuration['scroll_indicator_orientation']}" if page.configuration['scroll_indicator_orientation'].present?
+      classes << "delayed_text_fade_in_#{page.configuration['delayed_text_fade_in']}" if page.configuration['delayed_text_fade_in'].present?
+      classes << 'chapter_beginning' if page.position == 0
+      classes << 'first_page' if page.is_first
+      classes << 'no_text_content' if !page_has_content(page)
+      classes.join(' ')
+    end
+
+    def page_default_content(page)
+      safe_join([
+                  page_header(page),
+                  page_print_image(page),
+                  page_text(page)
+                ])
+    end
+
+    def page_header(page)
+      content_tag(:h3, class: 'page_header') do
+        safe_join([
+                    content_tag(:span, page.configuration['tagline'],
+                                class: 'page_header-tagline'),
+                    content_tag(:span, page.configuration['title'],
+                                class: 'page_header-title'),
+                    content_tag(:span, page.configuration['subtitle'],
+                                class: 'page_header-subtitle')
+                  ])
+      end
+    end
+
+    def page_print_image(page)
+      background_image_tag(page.configuration['background_image_id'], 'class' => 'print_image')
+    end
+
+    def page_text(page)
+      content_tag(:div, class: 'page_text') do
+        content_tag(:div, raw(page.configuration['text']), class: 'paragraph')
+      end
+    end
+
+    # @api private
+    def page_has_content(page)
+      has_title = ['title','subtitle','tagline'].any? do |attribute|
+        page.configuration[attribute].present?
+      end
+
+      has_text = strip_tags(page.configuration['text']).present?
+
+      (has_title && !page.configuration['hide_title']) || has_text
+    end
+
+    def page_navigation_css_class(page)
+      classes = [page.template]
+      classes << 'chapter_beginning' if page.position == 0
+      classes << 'emphasized' if page.configuration['emphasize_in_navigation']
+      classes << "chapter_#{page.chapter.position}"
+      page.chapter.position % 2 == 0 ? classes << 'chapter_even' : classes << 'chapter_odd'
       classes.join(' ')
     end
 
     def shadow_div(options = {})
       style = options[:opacity] ? "opacity: #{options[:opacity] / 100.0};" : nil
-      content_tag(:div, '', :class => 'shadow', :style => style)
-    end
-
-    def poster_image_div(video_id, poster_image_id)
-      if poster_image_id.present?
-        content_tag(:div, '', :class => "background background_image image_#{poster_image_id}")
-      else
-        content_tag(:div, '', :class => "background background_image video_poster_#{video_id || 'none'}")
+      content_tag(:div, '', :class => 'shadow_wrapper') do
+        content_tag(:div, '', :class => 'shadow', :style => style)
       end
-    end
-
-    def poster_image_tag(video_id, poster_image_id, options = {})
-      video_file = VideoFile.find_by_id(video_id)
-      poster = ImageFile.find_by_id(poster_image_id)
-
-      if poster
-        options = options.merge('data-src' => poster.attachment.url(:medium))
-        options = options.merge('data-printsrc' => poster.attachment.url(:print))
-      elsif video_file
-        options = options.merge('data-src' => video_file.poster.url(:medium))
-        options = options.merge('data-printsrc' => video_file.poster.url(:print))
-      end
-
-      image_tag('', options)
-    end
-
-    def lookup_video_tag(video_id, poster_image_id, options = {})
-
-      defaults = {:class => ['player video-js video-viewport vjs-default-skin', options.delete(:class)].compact * ' ',
-        :preload =>  options.delete(:preload) ? 'metadata' : 'none'}
-
-      options.reverse_merge! defaults
-      url_options = {:unique_id => options.delete(:unique_id)}
-
-      video_file = VideoFile.find_by_id(video_id)
-      poster = ImageFile.find_by_id(poster_image_id)
-
-      options[:data] = {}
-      script_tag_data = {:template => 'video'}
-
-      if poster
-        options[:data][:poster] = poster.attachment.url(:medium)
-        options[:data][:large_poster] = poster.attachment.url(:large)
-      elsif video_file
-        options[:data][:poster] = video_file.poster.url(:medium)
-        options[:data][:large_poster] = video_file.poster.url(:large)
-      end
-
-      if (video_file && video_file.width.present? && video_file.height.present?)
-        script_tag_data[:video_width] = options[:data][:width] = video_file.width
-        script_tag_data[:video_height] = options[:data][:height] = video_file.height
-      end
-
-      render('pageflow/pages/video_tag',
-             :video_file => video_file, :script_tag_data => script_tag_data,
-             :options => options, :url_options => url_options)
-    end
-
-    def video_file_sources(video_file, options = {})
-      [{
-          :type => 'video/webm',
-          :src => video_file.webm_medium.url(options),
-          :high_src => video_file.webm_high.url(options)
-        },
-        {
-          :type => 'application/x-mpegURL',
-          :src => video_file.hls_playlist.url(options),
-          :high_src => video_file.hls_playlist.url(options)
-        },
-        {
-          :type => 'video/mp4',
-          :src => video_file.mp4_medium.url(options),
-          :high_src => video_file.mp4_high.url(options)
-        }]
-    end
-
-    def audio_tag(audio_id, options = {})
-      defaults = {:class => ['audio-js', options.delete(:class)].compact * ' ',
-        :controls => true, :preload => 'none'}
-      options.merge! defaults
-      url_options = {:unique_id => options.delete(:unique_id)}
-
-      if (audio = AudioFile.find_by_id(audio_id))
-        content_tag :audio, options do
-          audio_file_sources(audio, url_options).map do |v|
-            concat tag(:source, :src => v[:src], :type => v[:type])
-          end
-        end
-      end
-    end
-
-    def audio_file_sources(audio_file, options = {})
-      [{:type => 'audio/ogg', :src => audio_file.ogg.url(options)},
-        {:type => 'audio/mp4', :src => audio_file.m4a.url(options)},
-        {:type => 'audio/mpeg', :src => audio_file.mp3.url(options)}]
     end
 
     def page_media_breakpoints
       {
-        :large => :default,
-        :medium => 'max-width: 900px'
+        desktop: :default,
+        mobile: 'max-width: 900px'
       }
     end
 
-    def page_thumbnail_item(page_ids, index, layout_name)
-      page_ids ||= {}
-      page = @entry.pages.find_by_perma_id(page_ids[index.to_s])
-
-      content_tag(:li,
-                  page ? page_thumbnail_link(page, page_thumbnail_hero?(index, layout_name)) : '',
-                  :data => {:reference_key => index},
-                  :class => page ? 'title_hover' : 'title_hover empty')
-    end
-
-    def page_thumbnail_hero?(index, layout_name)
-      index == {
-        'hero_top_left' => 1,
-        'hero_top_right' => 1
-      }[layout_name]
-    end
-
-    def page_thumbnail_link(page, hero = false)
-      link_to(content_tag(:span, raw(page.configuration['description']), :class => 'title'),
-              "##{page.perma_id}",
-              :title => page.title,
-              :data => {:page => page.id},
-              :class => ['thumbnail', page_thumbnail_image_class(page, hero)] * ' ')
-    end
-
     def page_thumbnail_image_class(page, hero)
-      model, attachment, property = page.thumbnail_definition
-      size = hero ? 'large_' : ''
-      "#{model}_link_thumbnail_#{size}#{page.configuration[property]}"
+      file_thumbnail_css_class(page_thumbnail_file(page), hero ? :link_thumbnail_large : :link_thumbnail)
+    end
+
+    def page_thumbnail_url(page, *args)
+      page_thumbnail_file(page).thumbnail_url(*args)
+    end
+
+    def page_thumbnail_file(page)
+      ThumbnailFileResolver.new(@entry, page.page_type.thumbnail_candidates, page.configuration)
+                           .find_thumbnail
     end
   end
 end

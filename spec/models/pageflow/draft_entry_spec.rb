@@ -2,12 +2,25 @@ require 'spec_helper'
 
 module Pageflow
   describe DraftEntry do
-    describe '#create_file' do
+    describe '#find_files' do
+      it 'returns files of given type' do
+        entry = create(:entry)
+        image_file = create(:image_file)
+        entry.draft.image_files << image_file
+        draft_entry = DraftEntry.new(entry)
+
+        result = draft_entry.find_files(Pageflow::ImageFile)
+
+        expect(result).to eq([image_file])
+      end
+    end
+
+    describe '#create_file!' do
       it 'creates image_file on draft' do
         entry = create(:entry)
         draft_entry = DraftEntry.new(entry)
 
-        image_file = draft_entry.create_file(ImageFile, {})
+        draft_entry.create_file!(BuiltInFileType.image, attachment: fixture_file)
 
         expect(entry.draft.reload).to have(1).image_file
       end
@@ -16,25 +29,100 @@ module Pageflow
         entry = create(:entry)
         draft_entry = DraftEntry.new(entry)
 
-        image_file = draft_entry.create_file(ImageFile, {})
+        image_file = draft_entry.create_file!(BuiltInFileType.image, attachment: fixture_file)
 
         expect(image_file.usage_id).to be_present
       end
-    end
 
-    describe '#add_file' do
-      it 'creates usage for given file' do
+      it 'raises exception if record is invalid' do
         entry = create(:entry)
         draft_entry = DraftEntry.new(entry)
-        file = create(:image_file)
 
-        image_file = draft_entry.add_file(file)
+        expect {
+          draft_entry.create_file!(BuiltInFileType.image, {})
+        }.to raise_error(ActiveRecord::RecordInvalid)
+      end
 
-        expect(entry.draft).to have(1).image_file
+      it 'raises exception if foreign key custom attribute references file not ' \
+         'used in revision' do
+        pageflow_configure do |config|
+          TestFileType.register(config,
+                                custom_attributes: {
+                                  related_image_file_id: {
+                                    model: 'Pageflow::ImageFile'
+                                  }
+                                })
+        end
+        test_file_type = Pageflow.config.file_types.find_by_model!(TestUploadableFile)
+
+        entry = create(:entry)
+        draft_entry = DraftEntry.new(entry)
+        image_file = create(:image_file)
+
+        expect {
+          draft_entry.create_file!(test_file_type,
+                                   attachment: fixture_file,
+                                   related_image_file_id: image_file.id)
+        }.to raise_error(DraftEntry::InvalidForeignKeyCustomAttributeError)
+      end
+
+      it 'does not raise exception if foreign key custom attribute references file ' \
+         'used in revision' do
+        pageflow_configure do |config|
+          TestFileType.register(config,
+                                custom_attributes: {
+                                  related_image_file_id: {
+                                    model: 'Pageflow::ImageFile'
+                                  }
+                                })
+        end
+        test_file_type = Pageflow.config.file_types.find_by_model!(TestUploadableFile)
+
+        entry = create(:entry)
+        draft_entry = DraftEntry.new(entry)
+        image_file = create(:image_file, used_in: entry.draft)
+
+        expect {
+          draft_entry.create_file!(test_file_type,
+                                   attachment: fixture_file,
+                                   related_image_file_id: image_file.id)
+        }.not_to raise_error
+      end
+
+      def fixture_file
+        File.open(Engine.root.join('spec', 'fixtures', 'image.jpg'))
       end
     end
 
-    describe '#remove_image_file' do
+    describe '#use_file' do
+      it 'creates usage for given file' do
+        entry = DraftEntry.new(create(:entry))
+        other_entry = DraftEntry.new(create(:entry))
+        video_file = create(:video_file, used_in: other_entry.draft)
+
+        used_file = other_entry.find_file(VideoFile, video_file.id)
+        entry.use_file(used_file)
+        video_files = entry.find_files(VideoFile)
+
+        expect(video_files).to include(video_file)
+      end
+
+      it 'copies configuration from source usage' do
+        entry = DraftEntry.new(create(:entry))
+        other_entry = DraftEntry.new(create(:entry))
+        file = create(:video_file,
+                      used_in: other_entry.draft,
+                      with_configuration: {some: 'value'})
+
+        used_file = other_entry.find_file(VideoFile, file.id)
+        entry.use_file(used_file)
+        new_used_file = entry.find_file(VideoFile, file.id)
+
+        expect(new_used_file.configuration).to eq('some' => 'value')
+      end
+    end
+
+    describe '#remove_file' do
       it 'removes file from files used by draft' do
         entry = create(:entry)
         image_file = create(:image_file)
@@ -68,6 +156,17 @@ module Pageflow
         draft_entry.remove_file(image_file)
 
         expect(other_revision).to have(1).image_file
+      end
+
+      it 'removes usages of nested files in draft' do
+        entry = create(:entry)
+        video_file = create(:video_file, used_in: entry.draft)
+        create(:text_track_file, used_in: entry.draft, parent_file: video_file)
+        draft_entry = DraftEntry.new(entry)
+
+        draft_entry.remove_file(video_file)
+
+        expect(draft_entry.find_files(TextTrackFile)).to be_empty
       end
     end
 

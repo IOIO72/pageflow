@@ -1,39 +1,11 @@
-require "pageflow/engine"
+require 'pageflow/engine'
+require 'pageflow/global_config_api'
+require 'pageflow/news_item_api'
+require 'pageflow/version'
 
 module Pageflow
-  def self.config
-    raise('Pageflow has not been configured yet') unless @config
-    @config
-  end
-
-  def self.configure(&block)
-    @configure_blocks ||= []
-    @configure_blocks << block
-  end
-
-  def self.configure!
-    return unless @finalized
-
-    @config = Configuration.new
-    @configure_blocks ||= []
-
-    @configure_blocks.each do |block|
-      block.call(@config)
-    end
-
-    @after_configure_blocks.each do |block|
-      block.call(@config)
-    end
-  end
-
-  def self.finalize!
-    @finalized = true
-  end
-
-  def self.after_configure(&block)
-    @after_configure_blocks ||= []
-    @after_configure_blocks << block
-  end
+  extend GlobalConfigApi
+  extend NewsItemApi
 
   def self.routes(router)
     router.instance_eval do
@@ -45,9 +17,31 @@ module Pageflow
         resources :entries do
           resources :memberships
         end
+
+        resources :accounts do
+          resources :memberships
+        end
       end
 
       mount Pageflow::Engine, at: '/'
     end
+  end
+
+  def self.active_admin_settings(config)
+    config.before_action do
+      I18n.locale = current_user.try(:locale) || http_accept_language.compatible_language_from(I18n.available_locales) || I18n.default_locale
+    end
+  end
+
+  def self.active_admin_load_path
+    Dir[Pageflow::Engine.root.join('admins')].first
+  end
+
+  def self.built_in_page_types_plugin
+    BuiltInPageTypesPlugin.new
+  end
+
+  def self.built_in_widget_types_plugin
+    BuiltInWidgetTypesPlugin.new
   end
 end

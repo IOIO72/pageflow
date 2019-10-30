@@ -7,9 +7,12 @@ pageflow.PagePreviewView = Backbone.Marionette.View.extend({
 
     'change:configuration': 'update',
 
-    'sync': function() {
+    'change:position': 'updatePositionClassNames',
+
+    'change:id': function() {
       this.$el.attr('data-id', this.model.id);
       this.$el.attr('data-perma-id', this.model.get('perma_id'));
+      this.$el.attr('id', this.model.get('perma_id'));
     }
   },
 
@@ -25,42 +28,55 @@ pageflow.PagePreviewView = Backbone.Marionette.View.extend({
 
   render: function() {
     this.$el.html(this.pageTemplate());
+
     this.$el.attr('data-id', this.model.id);
     this.$el.attr('data-perma-id', this.model.get('perma_id'));
+    this.$el.attr('id', this.model.get('perma_id'));
+    this.$el.attr('data-chapter-id', this.model.get('chapter_id'));
+
     this.$el.data('template', this.model.get('template'));
     this.$el.data('configuration', this.model.get('configuration'));
 
-    this.$el.page();
-    this.update();
-    this.$el.page('reactivate');
+    this.$el.on('pageenhanced', _.bind(function() {
+      this.update();
+      this.initEmbeddedViews();
 
-    this.initEmbeddedViews();
+      this.$el.page('reactivate');
+    }, this));
 
     return this;
   },
 
+  onClose: function() {
+    this.$el.page('cleanup');
+  },
+
   updateTemplate: function() {
+    this.$el.page('cleanup');
     this.$el.html(this.pageTemplate());
-    this.$el.attr('data-id', this.model.id);
-    this.$el.attr('data-perma-id', this.model.get('perma_id'));
     this.$el.data('template', this.model.get('template'));
-    this.$el.data('configuration', this.model.get('configuration'));
 
-    this.$el.page('reinit');
-    this.update();
-    this.$el.page('reactivate');
-
-    this.initEmbeddedViews();
+    setTimeout(_.bind(function() {
+      this.$el.page('reinit');
+    }, this), 0);
   },
 
   update: function() {
-    this.$el.removeClass(pageflow.Page.transitions.join(' ')).addClass(this.model.configuration.get('transition'));
-    this.pageType().update(this.$el, this.model.configuration);
+    this.$el.page('update', this.model.configuration);
+
+    pageflow.events.trigger('page:update', this.model);
+
     this.refreshScroller();
+    this.updatePositionClassNames();
   },
 
-  pageType: function() {
-    return this.$el.data('pageType');
+  updatePositionClassNames: function() {
+    this.$el.toggleClass('chapter_beginning', this.model.isChapterBeginning());
+    this.$el.toggleClass('first_page', this.model.isFirstPage());
+  },
+
+  pageTypeHooks: function() {
+    return pageflow.pageType.get(this.model.get('template'));
   },
 
   pageTemplate: function() {
@@ -80,7 +96,7 @@ pageflow.PagePreviewView = Backbone.Marionette.View.extend({
 
     view.embeddedViews = new Backbone.ChildViewContainer();
 
-    _.each(view.pageType().embeddedEditorViews(), function(item, selector) {
+    _.each(view.embeddedViewDefinitions(), function(item, selector) {
       view.$(selector).each(function() {
         view.embeddedViews.add(new item.view(_.extend(item.options || {}, {
           el: this,
@@ -89,6 +105,14 @@ pageflow.PagePreviewView = Backbone.Marionette.View.extend({
         })).render());
       });
     });
+  },
+
+  embeddedViewDefinitions: function() {
+    return _.extend(
+      {},
+      this.pageTypeHooks().embeddedEditorViews() || {},
+      this.model.pageType().embeddedViews()
+    );
   },
 
   _unescape: function(text) {

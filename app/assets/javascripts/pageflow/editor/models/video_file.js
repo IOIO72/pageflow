@@ -1,14 +1,9 @@
-pageflow.VideoFile = Backbone.Model.extend({
-  modelName: 'video_file',
-  paramRoot: 'video_file',
-
-  mixins: [pageflow.file, pageflow.encodedFile, pageflow.stageProvider, pageflow.retryable],
-
-  urlRoot: function() {
-    return this.isNew() ? this.collection.url() : '/editor/video_files';
+pageflow.VideoFile = pageflow.EncodedFile.extend({
+  getBackgroundPositioningImageUrl: function() {
+    return this.get('poster_url');
   },
 
   isPositionable: function() {
-    return false;
+    return this.isReady();
   }
 });

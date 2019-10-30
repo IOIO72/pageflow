@@ -1,14 +1,15 @@
 module Pageflow
-  FactoryGirl.define do
+  FactoryBot.define do
     factory :image_file, :class => ImageFile do
       entry
       uploader { create(:user) }
 
-      attachment File.open(Engine.root.join('spec', 'fixtures', 'image.jpg'))
-      state 'processed'
+      attachment { File.open(Engine.root.join('spec', 'fixtures', 'image.jpg')) }
+      state { 'processed' }
 
-      ignore do
-        used_in nil
+      transient do
+        used_in { nil }
+        with_configuration { nil }
       end
 
       before(:create) do |file, evaluator|
@@ -16,22 +17,42 @@ module Pageflow
       end
 
       after(:create) do |file, evaluator|
-        create(:file_usage, :file => file, :revision => evaluator.used_in) if evaluator.used_in
+        if evaluator.used_in
+          create(:file_usage,
+                 file: file,
+                 revision: evaluator.used_in,
+                 configuration: evaluator.with_configuration)
+        end
       end
 
-      trait :unprocessed do
-        unprocessed_attachment File.open(Engine.root.join('spec', 'fixtures', 'image.jpg'))
-        processed_attachment nil
-        state 'not_processed'
+      trait :uploading do
+        attachment { nil }
+        file_name { 'image.jpg' }
+        state { 'uploading' }
+
+        after :create do |image_file|
+          simulate_direct_upload(image_file)
+        end
       end
 
-      trait :failed do
-        unprocessed_attachment File.open(Engine.root.join('spec', 'fixtures', 'image.jpg'))
-        processed_attachment nil
-        state 'processing_failed'
+      trait :uploaded do
+        uploading
+        state { 'uploaded' }
       end
 
-      trait :encoded do
+      trait :uploading_failed do
+        state { 'uploading_failed' }
+      end
+
+      trait :processing do
+        state { 'processing' }
+      end
+
+      trait :processed do
+      end
+
+      trait :processing_failed do
+        state { 'processing_failed' }
       end
     end
   end

@@ -1,21 +1,22 @@
-# Read about factories at https://github.com/thoughtbot/factory_girl
-
 module Pageflow
-  FactoryGirl.define do
+  FactoryBot.define do
     factory :chapter, :class => Chapter do
-      revision
+      storyline
 
-      ignore do
-        entry nil
+      transient do
+        in_main_storyline_of { nil }
       end
 
       before(:create) do |chapter, evaluator|
-        chapter.revision = evaluator.entry.draft if evaluator.entry
+        if revision = evaluator.in_main_storyline_of
+          chapter.storyline = revision.storylines.first ||
+            fail('Expected revision to have a main storyline.')
+        end
       end
     end
 
     factory :valid_chapter, :class => Chapter do
-      title "Introduction"
+      title { 'Introduction' }
     end
   end
 end

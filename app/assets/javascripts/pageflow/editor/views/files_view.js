@@ -10,17 +10,19 @@ pageflow.FilesView = Backbone.Marionette.ItemView.extend({
 
   onRender: function() {
     this.addFileModel = new Backbone.Model({
-      label: 'Hinzufügen',
+      label: I18n.t('pageflow.editor.views.files_view.add'),
       options: [
         {
-          label: 'Hochladen',
+          label: I18n.t('pageflow.editor.views.files_view.upload'),
           handler: this.upload.bind(this)
         },
         {
-          label: 'Wiederverwenden',
+          label: I18n.t('pageflow.editor.views.files_view.reuse'),
           handler: function() {
             pageflow.FilesExplorerView.open({
-              callback: pageflow.entry.addFileUsage.bind(pageflow.entry)
+              callback: function(otherEntry, file) {
+                pageflow.entry.reuseFile(otherEntry, file);
+              }
             });
           }
         }
@@ -31,52 +33,39 @@ pageflow.FilesView = Backbone.Marionette.ItemView.extend({
 
     this.tabsView = new pageflow.TabsView({
       model: this.model,
-      i18n: 'editor.files.tabs',
+      i18n: 'pageflow.editor.files.tabs',
       defaultTab: this.options.tabName
     });
 
-    this.tab('image_files', {
-      collection: this.model.imageFiles,
-      itemView: pageflow.ImageFileItemView
-    });
-
-    this.tab('video_files', {
-      collection: this.model.videoFiles,
-      itemView: pageflow.VideoFileItemView
-    });
-
-    this.tab('audio_files', {
-      collection: this.model.audioFiles,
-      itemView: pageflow.AudioFileItemView
-    });
+    pageflow.editor.fileTypes.each(function(fileType) {
+      if (fileType.topLevelType) {
+        this.tab(fileType);
+      }
+    }, this);
 
     this.$el.append(this.subview(this.tabsView).el);
   },
 
-  tab: function(name, options) {
-    this.tabsView.tab(name, _.bind(function() {
-      return this.subview(new pageflow.CollectionView({
-        tagName: 'ul',
-        className: 'files expandable',
-        collection: options.collection,
-        itemViewConstructor: options.itemView,
-        itemViewOptions: {
-          selectable: this.options.tabName === name
-        },
-        blankSlateViewConstructor: Backbone.Marionette.ItemView.extend({
-          template: 'templates/files_blank_slate'
-        })
+  tab: function(fileType) {
+    var selectionMode = this.options.tabName === fileType.collectionName;
+
+    this.tabsView.tab(fileType.collectionName, _.bind(function() {
+      return this.subview(new pageflow.FilteredFilesView({
+        entry: pageflow.entry,
+        fileType: fileType,
+        selectionHandler: selectionMode && this.options.selectionHandler,
+        filterName: selectionMode && this.options.filterName
       }));
     }, this));
 
-    this.listenTo(this.model, 'change:uploading_' + name +'_count', function(model, value) {
-      this.tabsView.toggleSpinnerOnTab(name, value > 0);
+    this.listenTo(this.model, 'change:uploading_' + fileType.collectionName +'_count', function(model, value) {
+      this.tabsView.toggleSpinnerOnTab(fileType.collectionName, value > 0);
     });
   },
 
   goBack: function() {
-    if (this.options.page) {
-      editor.navigate('/pages/' + this.options.page.id + '/files', {trigger: true});
+    if (this.options.selectionHandler) {
+      editor.navigate(this.options.selectionHandler.getReferer(), {trigger: true});
     }
     else {
       editor.navigate('/', {trigger: true});
@@ -85,12 +74,5 @@ pageflow.FilesView = Backbone.Marionette.ItemView.extend({
 
   upload: function() {
     pageflow.app.trigger('request-upload');
-  },
-
-  updatePage: function(event, file) {
-    if (this.options.page) {
-      this.options.page.configuration.setReference(this.options.pageAttributeName, file);
-      this.goBack();
-    }
   }
 });
